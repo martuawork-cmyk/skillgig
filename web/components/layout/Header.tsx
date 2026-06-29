@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { UserMenu } from '@/components/layout/UserMenu';
 import { cn } from '@/lib/utils';
 
 const NAV = [
@@ -10,7 +11,16 @@ const NAV = [
   { label: 'Roadmap', href: '/roadmap' },
 ];
 
-export function Header() {
+type Props = {
+  user: {
+    name: string;
+    initials: string;
+    role: 'client' | 'freelancer';
+    email?: string;
+  } | null;
+};
+
+export function Header({ user }: Props) {
   const [open, setOpen] = useState(false);
 
   // Close drawer on Escape
@@ -67,28 +77,56 @@ export function Header() {
           ))}
         </nav>
 
-        {/* Desktop CTA */}
+        {/* Desktop CTA / User menu */}
         <div className="hidden md:flex items-center gap-2">
-          <Link
-            href="/learn"
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 rounded-lg shadow-soft active:scale-[.98] transition"
-          >
-            <span aria-hidden>🚀</span>
-            Mulai Gratis
-          </Link>
+          {user ? (
+            <UserMenu
+              name={user.name}
+              initials={user.initials}
+              role={user.role}
+              email={user.email}
+            />
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="px-3 py-2 text-sm font-semibold text-slate-700 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+              >
+                Masuk
+              </Link>
+              <Link
+                href="/signup"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 rounded-lg shadow-soft active:scale-[.98] transition"
+              >
+                <span aria-hidden>🚀</span>
+                Mulai Gratis
+              </Link>
+            </>
+          )}
         </div>
 
-        {/* Mobile hamburger */}
-        <button
-          type="button"
-          aria-label={open ? 'Tutup menu' : 'Buka menu'}
-          aria-expanded={open}
-          aria-controls="mobile-nav"
-          onClick={() => setOpen(!open)}
-          className="md:hidden p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition"
-        >
-          {open ? <XIcon /> : <MenuIcon />}
-        </button>
+        {/* Mobile right side */}
+        <div className="md:hidden flex items-center gap-2">
+          {user && (
+            <UserMenu
+              name={user.name}
+              initials={user.initials}
+              role={user.role}
+              email={user.email}
+            />
+          )}
+          {/* Mobile hamburger */}
+          <button
+            type="button"
+            aria-label={open ? 'Tutup menu' : 'Buka menu'}
+            aria-expanded={open}
+            aria-controls="mobile-nav"
+            onClick={() => setOpen(!open)}
+            className="p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition"
+          >
+            {open ? <XIcon /> : <MenuIcon />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile drawer */}
@@ -111,13 +149,24 @@ export function Header() {
               {item.label}
             </Link>
           ))}
-          <Link
-            href="/learn"
-            onClick={close}
-            className="mt-2 block text-center px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 rounded-lg shadow-soft active:scale-[.98] transition"
-          >
-            <span aria-hidden>🚀</span> Mulai Gratis
-          </Link>
+          {!user && (
+            <>
+              <Link
+                href="/login"
+                onClick={close}
+                className="block px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition"
+              >
+                Masuk
+              </Link>
+              <Link
+                href="/signup"
+                onClick={close}
+                className="mt-2 block text-center px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 rounded-lg shadow-soft active:scale-[.98] transition"
+              >
+                <span aria-hidden>🚀</span> Mulai Gratis
+              </Link>
+            </>
+          )}
         </nav>
       </div>
     </header>

@@ -56,3 +56,106 @@ export async function subscribeEmail(email: string): Promise<SubscribeResult> {
     return { ok: false, reason: 'unknown' };
   }
 }
+// ============================================================================
+// Auth actions
+// ============================================================================
+
+const PASSWORD_MIN = 6;
+
+export type AuthRole = 'client' | 'freelancer';
+
+export type AuthResult =
+  | { ok: true }
+  | { ok: false; reason: 'invalid-input' | 'weak-password' | 'auth-failed' | 'network' | 'unknown'; message?: string };
+
+type AuthFailureReason = 'invalid-input' | 'weak-password' | 'auth-failed' | 'network' | 'unknown';
+
+function friendlyAuthMessage(msg: string): { reason: AuthFailureReason; message: string } {
+  const m = msg.toLowerCase();
+  if (m.includes('invalid login credentials') || m.includes('invalid credentials')) {
+    return { reason: 'auth-failed', message: 'Email atau password salah.' };
+  }
+  if (m.includes('user already registered') || m.includes('already been registered')) {
+    return { reason: 'auth-failed', message: 'Email sudah terdaftar. Coba masuk.' };
+  }
+  if (m.includes('password') && m.includes('at least')) {
+    return { reason: 'weak-password', message: 'Password minimal 6 karakter.' };
+  }
+  if (m.includes('email not confirmed')) {
+    return { reason: 'auth-failed', message: 'Email belum dikonfirmasi.' };
+  }
+  return { reason: 'unknown', message: msg };
+}
+
+export async function signInWithPassword(
+  email: string,
+  password: string,
+): Promise<AuthResult> {
+  const trimmed = email.trim();
+  if (!EMAIL_RE.test(trimmed)) return { ok: false, reason: 'invalid-input' };
+  if (password.length < PASSWORD_MIN) return { ok: false, reason: 'weak-password' };
+
+  try {
+    const sb = createClient();
+    const { error } = await sb.auth.signInWithPassword({
+      email: trimmed,
+      password,
+    });
+    if (!error) return { ok: true };
+    const f = friendlyAuthMessage(error.message);
+    return { ok: false, reason: f.reason, message: f.message };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('env vars missing')) {
+      return { ok: false, reason: 'network', message: 'Belum terkoneksi ke Supabase.' };
+    }
+    // eslint-disable-next-line no-console
+    console.warn('[signIn] caught:', err);
+    return { ok: false, reason: 'unknown', message: msg };
+  }
+}
+
+export async function signUpWithPassword(
+  name: string,
+  email: string,
+  password: string,
+  role: AuthRole,
+): Promise<AuthResult> {
+  const trimmedEmail = email.trim();
+  const trimmedName = name.trim();
+  if (!trimmedName) return { ok: false, reason: 'invalid-input', message: 'Nama wajib diisi.' };
+  if (!EMAIL_RE.test(trimmedEmail)) return { ok: false, reason: 'invalid-input', message: 'Email tidak valid.' };
+  if (password.length < PASSWORD_MIN) return { ok: false, reason: 'weak-password', message: 'Password minimal 6 karakter.' };
+
+  try {
+    const sb = createClient();
+    const { error } = await sb.auth.signUp({
+      email: trimmedEmail,
+      password,
+      options: {
+        data: { name: trimmedName, role },
+      },
+    });
+    if (!error) return { ok: true };
+    const f = friendlyAuthMessage(error.message);
+    return { ok: false, reason: f.reason, message: f.message };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('env vars missing')) {
+      return { ok: false, reason: 'network', message: 'Belum terkoneksi ke Supabase.' };
+    }
+    // eslint-disable-next-line no-console
+    console.warn('[signUp] caught:', err);
+    return { ok: false, reason: 'unknown', message: msg };
+  }
+}
+
+export async function signOut(): Promise<void> {
+  try {
+    const sb = createClient();
+    await sb.auth.signOut();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[signOut] caught:', err);
+  }
+}

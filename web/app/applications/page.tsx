@@ -2,18 +2,17 @@ import { StatsGrid } from '@/components/ui/StatsGrid';
 import { ApplicationsClient } from '@/components/application/ApplicationsClient';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import {
-  getApplicationsByFreelancer,
+  getMyApplications,
   getGigs,
   getUser,
-  isSupabaseConfigured,
 } from '@/lib/supabase/queries';
-import { CURRENT_USER_ID } from '@/lib/mock';
+import { requireUser, isSupabaseConfigured as _isSupabaseConfigured } from '@/lib/supabase/session';
 import type { Gig, User } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ApplicationsPage() {
-  if (!isSupabaseConfigured()) {
+  if (!_isSupabaseConfigured()) {
     return (
       <PageShell>
         <ErrorState
@@ -25,9 +24,12 @@ export default async function ApplicationsPage() {
     );
   }
 
+  // Require auth — redirect to /login if not signed in
+  const currentUser = await requireUser('/applications');
+
   // Fetch all the data we need in parallel
   const [apps, gigsList] = await Promise.all([
-    getApplicationsByFreelancer(CURRENT_USER_ID),
+    getMyApplications(),
     getGigs(),
   ]);
 
@@ -55,6 +57,11 @@ export default async function ApplicationsPage() {
 
   return (
     <PageShell>
+      <header className="px-1 -mt-2 mb-1">
+        <p className="text-xs text-slate-500">
+          Hai <span className="font-semibold text-slate-900">{currentUser.name}</span>, ini ringkasan lamaran kamu.
+        </p>
+      </header>
       {/* Stats */}
       <StatsGrid
         cols={4}

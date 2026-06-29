@@ -397,3 +397,23 @@ export async function getApplicationsByFreelancer(
     return (data ?? []).map(mapApplicationRow);
   }, []);
 }
+
+/**
+ * Fetch the applications for the currently signed-in user. Uses the
+ * authenticated session via Supabase Auth. RLS restricts to own rows
+ * (see migration 006_auth.sql).
+ */
+export async function getMyApplications(): Promise<Application[]> {
+  return safeQuery('getMyApplications', async () => {
+    const sb = await createClient();
+    const { data: auth } = await sb.auth.getUser();
+    if (!auth?.user) return [];
+    const { data, error } = await sb
+      .from('applications')
+      .select('*')
+      .eq('freelancer_id', auth.user.id)
+      .order('applied_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(mapApplicationRow);
+  }, []);
+}

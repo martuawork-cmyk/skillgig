@@ -4,6 +4,7 @@ import './globals.css';
 import { Header } from '@/components/layout/Header';
 import { JourneyNav } from '@/components/layout/JourneyNav';
 import { Footer } from '@/components/layout/Footer';
+import { getCurrentUser } from '@/lib/supabase/session';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -13,15 +14,27 @@ export const metadata: Metadata = {
     'Platform Indonesia yang menghubungkan pembelajaran skill digital dengan peluang freelance.',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Fetch current user in the root layout so the header can render the
+  // appropriate auth state (sign-in button vs user menu) on every page.
+  // If Supabase isn't configured or session is missing, this resolves to null.
+  const user = await getCurrentUser();
+  const headerUser = user
+    ? {
+        name: user.name,
+        initials: user.initials,
+        role: user.role,
+      }
+    : null;
+
   return (
     <html lang="id" className={inter.variable}>
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
-        <Header />
+        <Header user={headerUser} />
         <JourneyNav />
         <main>{children}</main>
         <Footer />
