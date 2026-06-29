@@ -3,6 +3,7 @@ import { Card, CardBody } from '@/components/ui/Card';
 import { ButtonLink } from '@/components/ui/Button';
 import { GigCard } from '@/components/gig/GigCard';
 import { CourseCard } from '@/components/course/CourseCard';
+import { NewsletterSection } from '@/components/newsletter/NewsletterSection';
 import { getCourses, getGigs, isSupabaseConfigured } from '@/lib/supabase/queries';
 
 const JOURNEY = [
@@ -156,6 +157,11 @@ export default async function Home() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Newsletter */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <NewsletterSection />
       </section>
 
       {/* CTA */}
