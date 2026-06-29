@@ -5,6 +5,7 @@ import { StatsGrid } from '@/components/ui/StatsGrid';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CourseCard } from '@/components/course/CourseCard';
 import { CourseFilters, type SortKey } from '@/components/course/CourseFilters';
+import { SubscriberForm } from '@/components/subscriber/SubscriberForm';
 import { COURSE_PLATFORMS } from '@/lib/types';
 import type { Course, CourseCategory } from '@/lib/types';
 
@@ -77,6 +78,9 @@ export function LearnClient({ initialCourses }: { initialCourses: Course[] }) {
           { label: 'Gratis',          value: freeCount,             accent: 'from-violet-500 to-violet-600' },
         ]}
       />
+
+      {/* Newsletter opt-in */}
+      <SubscriberForm />
 
       {/* Filter bar */}
       <CourseFilters
