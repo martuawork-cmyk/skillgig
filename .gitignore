@@ -1,0 +1,9 @@
+# SkillGig.id — root-level ignores
+# (per-project ignores live in web/.gitignore and web/web/.gitignore from create-next-app)
+
+# Reference docs & sibling tools (not part of the Next.js app)
+SkillGig PRD.pdf
+prd-studio.html
+
+# Claude Code local state
+.claude/
