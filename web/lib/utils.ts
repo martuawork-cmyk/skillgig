@@ -15,6 +15,13 @@ export function formatIDR(amount: number): string {
   }).format(amount);
 }
 
+export function formatCompact(n: number): string {
+  return new Intl.NumberFormat('id-ID', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(n);
+}
+
 export function formatDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString('id-ID', {

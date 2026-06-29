@@ -33,13 +33,36 @@ export interface Course {
   id: string;
   title: string;
   titleId: string;
-  provider: string;
+  platform: CoursePlatform;
+  category: CourseCategory;
+  price: number; // IDR, 0 = gratis
   durationHours: number;
   level: SkillLevel;
   skillsTaught: string[];
-  thumbnail: string; // emoji placeholder
+  thumbnail: string; // emoji
+  students: number;
+  createdAt: string; // ISO date
   enrolled: boolean; // mock "currently learning" flag
+  url?: string; // optional external link
 }
+
+export type CoursePlatform = 'Udemy' | 'Coursera' | 'Dicoding' | 'YouTube';
+
+export type CourseCategory = 'design' | 'tech' | 'marketing';
+
+export const COURSE_PLATFORMS: Record<CoursePlatform, string> = {
+  Udemy:    'bg-purple-100 text-purple-700',
+  Coursera: 'bg-blue-100 text-blue-700',
+  Dicoding: 'bg-red-100 text-red-700',
+  YouTube:  'bg-rose-100 text-rose-700',
+};
+
+export const COURSE_CATEGORIES: { value: CourseCategory | 'all'; label: string }[] = [
+  { value: 'all',       label: 'Semua' },
+  { value: 'design',    label: 'Design' },
+  { value: 'tech',      label: 'Tech' },
+  { value: 'marketing', label: 'Marketing' },
+];
 
 export interface Skill {
   id: string;
