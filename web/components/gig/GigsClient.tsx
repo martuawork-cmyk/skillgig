@@ -6,14 +6,13 @@ import { StatsGrid } from '@/components/ui/StatsGrid';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FilterPills } from '@/components/ui/FilterPills';
 import { GigCard } from '@/components/gig/GigCard';
-import { gigs } from '@/lib/mock';
 import { CATEGORIES, LEVELS, type GigCategory, type SkillLevel } from '@/lib/types';
+import type { Gig } from '@/lib/types';
 
 type Sort = 'newest' | 'budget-high' | 'budget-low' | 'applicants';
-
 const SAVED_GIGS_KEY = 'skillgig.saved_gigs.v1';
 
-export function GigFilters() {
+export function GigsClient({ initialGigs }: { initialGigs: Gig[] }) {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<GigCategory | 'all'>('all');
   const [level, setLevel] = useState<SkillLevel | 'all'>('all');
@@ -39,7 +38,7 @@ export function GigFilters() {
   }, []);
 
   function toggleBookmark(id: string) {
-    const gig = gigs.find((g) => g.id === id);
+    const gig = initialGigs.find((g) => g.id === id);
     setBookmarkedIds((prev) => {
       const next = new Set(prev);
       let msg: string;
@@ -61,7 +60,7 @@ export function GigFilters() {
   }
 
   const filtered = useMemo(() => {
-    let list = [...gigs];
+    let list = initialGigs.slice();
     if (q.trim()) {
       const needle = q.toLowerCase();
       list = list.filter(
@@ -81,20 +80,24 @@ export function GigFilters() {
       default:            list.sort((a, b) => +new Date(b.postedAt) - +new Date(a.postedAt));
     }
     return list;
-  }, [q, cat, level, sort]);
+  }, [initialGigs, q, cat, level, sort]);
 
   function reset() {
     setQ(''); setCat('all'); setLevel('all'); setSort('newest');
   }
 
   // Stats
-  const totalGigs = gigs.length;
-  const avgBudget = Math.round(
-    gigs.reduce((s, g) => s + (g.budgetMin + g.budgetMax) / 2, 0) / gigs.length,
-  );
-  const openCategories = new Set(gigs.map((g) => g.category)).size;
+  const totalGigs = initialGigs.length;
+  const avgBudget =
+    initialGigs.length > 0
+      ? Math.round(
+          initialGigs.reduce((s, g) => s + (g.budgetMin + g.budgetMax) / 2, 0) /
+            initialGigs.length,
+        )
+      : 0;
+  const openCategories = new Set(initialGigs.map((g) => g.category)).size;
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const newThisWeek = gigs.filter((g) => +new Date(g.postedAt) >= weekAgo).length;
+  const newThisWeek = initialGigs.filter((g) => +new Date(g.postedAt) >= weekAgo).length;
 
   return (
     <div className="space-y-6">
@@ -102,10 +105,10 @@ export function GigFilters() {
       <StatsGrid
         cols={4}
         stats={[
-          { label: 'Total gigs',    value: totalGigs,       accent: 'from-indigo-500 to-violet-500', icon: '💼' },
-          { label: 'Avg budget',    value: 'Rp ' + Math.round(avgBudget / 1_000_000) + ' jt', accent: 'from-emerald-500 to-emerald-600', icon: '💰' },
-          { label: 'Kategori',      value: openCategories,  accent: 'from-amber-500 to-amber-600', icon: '🏷️' },
-          { label: 'Baru 7 hari',   value: newThisWeek,     accent: 'from-rose-500 to-rose-600', icon: '🆕' },
+          { label: 'Total gigs',  value: totalGigs,      accent: 'from-indigo-500 to-violet-500', icon: '💼' },
+          { label: 'Avg budget',  value: 'Rp ' + Math.round(avgBudget / 1_000_000) + ' jt', accent: 'from-emerald-500 to-emerald-600', icon: '💰' },
+          { label: 'Kategori',    value: openCategories, accent: 'from-amber-500 to-amber-600', icon: '🏷️' },
+          { label: 'Baru 7 hari', value: newThisWeek,    accent: 'from-rose-500 to-rose-600', icon: '🆕' },
         ]}
       />
 

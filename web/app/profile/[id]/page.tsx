@@ -4,14 +4,29 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { ButtonLink } from '@/components/ui/Button';
-import { users, getUser } from '@/lib/mock';
+import { ErrorState } from '@/components/feedback/ErrorState';
+import { getUser, isSupabaseConfigured } from '@/lib/supabase/queries';
 
-export function generateStaticParams() {
-  return users.map((u) => ({ id: u.id }));
-}
+export const dynamic = 'force-dynamic';
 
-export default function ProfilePage({ params }: { params: { id: string } }) {
-  const user = getUser(params.id);
+export default async function ProfilePage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  if (!isSupabaseConfigured()) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+        <ErrorState
+          title="Belum terkoneksi ke Supabase"
+          message="Halaman profile butuh data dari database."
+          hint="Isi .env.local dan jalankan migration SQL."
+        />
+      </div>
+    );
+  }
+
+  const user = await getUser(params.id);
   if (!user) notFound();
 
   const isFreelancer = user.role === 'freelancer';

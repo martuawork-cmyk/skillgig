@@ -3,7 +3,7 @@ import { Card, CardBody } from '@/components/ui/Card';
 import { ButtonLink } from '@/components/ui/Button';
 import { GigCard } from '@/components/gig/GigCard';
 import { CourseCard } from '@/components/course/CourseCard';
-import { gigs, courses } from '@/lib/mock';
+import { getCourses, getGigs, isSupabaseConfigured } from '@/lib/supabase/queries';
 
 const JOURNEY = [
   { icon: '📚', label: 'Learn',  desc: 'Pelajari skill digital dari kursus terstruktur', href: '/learn' },
@@ -20,9 +20,15 @@ const STATS = [
   { value: '4.8★',  label: 'Client rating' },
 ];
 
-export default function Home() {
-  const featuredGigs = gigs.slice(0, 3);
-  const featuredCourses = courses.slice(0, 3);
+export const dynamic = 'force-dynamic';
+
+export default async function Home() {
+  // Featured items — fetched at request time so changes in Supabase appear
+  // immediately without a rebuild. If Supabase isn't configured yet, render
+  // the static landing without featured sections.
+  const ready = isSupabaseConfigured();
+  const featuredGigs    = ready ? (await getGigs()).slice(0, 3)    : [];
+  const featuredCourses = ready ? (await getCourses()).slice(0, 3) : [];
 
   return (
     <div>
@@ -121,11 +127,13 @@ export default function Home() {
             Lihat semua →
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {featuredGigs.map((g) => (
-            <GigCard key={g.id} gig={g} />
-          ))}
-        </div>
+        {featuredGigs.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {featuredGigs.map((g) => (
+              <GigCard key={g.id} gig={g} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Featured Courses */}
@@ -141,11 +149,13 @@ export default function Home() {
             Lihat semua →
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {featuredCourses.map((c) => (
-            <CourseCard key={c.id} course={c} />
-          ))}
-        </div>
+        {featuredCourses.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {featuredCourses.map((c) => (
+              <CourseCard key={c.id} course={c} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* CTA */}

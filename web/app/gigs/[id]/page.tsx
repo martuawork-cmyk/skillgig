@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Tag } from '@/components/ui/Tag';
 import { Avatar } from '@/components/ui/Avatar';
 import { ApplyForm } from '@/components/gig/ApplyForm';
-import { gigs, getGig, getUser } from '@/lib/mock';
+import { ErrorState } from '@/components/feedback/ErrorState';
+import { getGig, getUser, isSupabaseConfigured } from '@/lib/supabase/queries';
 import {
   formatIDR,
   timeAgo,
@@ -15,15 +16,30 @@ import {
   levelLabel,
 } from '@/lib/utils';
 
-export function generateStaticParams() {
-  return gigs.map((g) => ({ id: g.id }));
-}
+export const dynamic = 'force-dynamic';
 
-export default function GigDetailPage({ params }: { params: { id: string } }) {
-  const gig = getGig(params.id);
+export default async function GigDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  if (!isSupabaseConfigured()) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+        <ErrorState
+          title="Belum terkoneksi ke Supabase"
+          message="Halaman detail gig butuh data dari database."
+          hint="Isi .env.local dan jalankan migration SQL."
+        />
+      </div>
+    );
+  }
+
+  const gig = await getGig(params.id);
   if (!gig) notFound();
 
-  const client = getUser(gig.clientId);
+  // Try to fetch client user — gracefully handle if no client FK
+  const client = gig.clientId ? await getUser(gig.clientId) : null;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
@@ -35,7 +51,6 @@ export default function GigDetailPage({ params }: { params: { id: string } }) {
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardBody className="space-y-4">
@@ -60,7 +75,6 @@ export default function GigDetailPage({ params }: { params: { id: string } }) {
                 </p>
               </div>
 
-              {/* Quick stats */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <Stat label="Budget" value={`${formatIDR(gig.budgetMin)} – ${formatIDR(gig.budgetMax)}`} />
                 <Stat label="Durasi" value={`${gig.durationWeeks} minggu`} />
@@ -75,7 +89,9 @@ export default function GigDetailPage({ params }: { params: { id: string } }) {
               <h2 className="font-bold text-slate-900">Deskripsi Project</h2>
             </CardHeader>
             <CardBody className="space-y-3">
-              <p className="text-slate-700 leading-relaxed">{gig.descriptionId}</p>
+              <p className="text-slate-700 leading-relaxed">
+                {gig.descriptionId || gig.description}
+              </p>
               <p className="text-sm text-slate-500 italic border-l-2 border-slate-200 pl-3">
                 EN: {gig.description}
               </p>
@@ -88,11 +104,15 @@ export default function GigDetailPage({ params }: { params: { id: string } }) {
             </CardHeader>
             <CardBody>
               <div className="flex flex-wrap gap-2">
-                {gig.skillsRequired.map((s) => (
-                  <Tag key={s} className="bg-indigo-50 text-indigo-700">
-                    {s}
-                  </Tag>
-                ))}
+                {gig.skillsRequired.length > 0 ? (
+                  gig.skillsRequired.map((s) => (
+                    <Tag key={s} className="bg-indigo-50 text-indigo-700">
+                      {s}
+                    </Tag>
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-500">Skill belum ditentukan.</p>
+                )}
               </div>
             </CardBody>
           </Card>
@@ -121,7 +141,6 @@ export default function GigDetailPage({ params }: { params: { id: string } }) {
           )}
         </div>
 
-        {/* Sidebar — Apply */}
         <aside className="lg:col-span-1">
           <div className="lg:sticky lg:top-32">
             <ApplyForm gigId={gig.id} />
