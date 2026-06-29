@@ -105,6 +105,39 @@ export const CATEGORIES: { value: GigCategory; label: string; color: string }[] 
   { value: 'video',    label: 'Video',     color: 'bg-rose-100 text-rose-700' },
 ];
 
+// Roadmap — exploratory data for /roadmap page (Step 3 of journey)
+export interface RoadmapCourseRef {
+  title: string;
+  platform: CoursePlatform;
+  url: string;
+}
+
+export interface RoadmapGigRef {
+  title: string;
+  budgetMin: number;
+  budgetMax: number;
+  platform: string;
+}
+
+export interface RoadmapIncomeTier {
+  level: 'Pemula' | 'Menengah' | 'Expert';
+  min: number;
+  max: number;
+}
+
+export interface Roadmap {
+  skill: string;
+  category: GigCategory;
+  difficulty: SkillLevel;
+  durationWeeks: number;
+  /** IDR per month at full expert level. */
+  estimatedIncome: { min: number; max: number };
+  skills: string[];
+  courses: RoadmapCourseRef[];
+  gigs: RoadmapGigRef[];
+  incomeTiers: RoadmapIncomeTier[];
+}
+
 export const LEVELS: { value: SkillLevel; label: string; color: string }[] = [
   { value: 'beginner',     label: 'Beginner',     color: 'bg-slate-100 text-slate-700' },
   { value: 'intermediate', label: 'Intermediate', color: 'bg-violet-100 text-violet-700' },

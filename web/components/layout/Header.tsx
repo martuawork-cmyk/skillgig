@@ -5,9 +5,9 @@ import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 const NAV = [
-  { label: 'Learn',   href: '/learn'  },
-  { label: 'Earn',    href: '/earn'   },
-  { label: 'Roadmap', href: '/skills' },
+  { label: 'Learn',   href: '/learn'   },
+  { label: 'Earn',    href: '/earn'    },
+  { label: 'Roadmap', href: '/roadmap' },
 ];
 
 export function Header() {
