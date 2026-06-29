@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StatsGrid } from '@/components/ui/StatsGrid';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CourseCard } from '@/components/course/CourseCard';
@@ -8,53 +8,18 @@ import { CourseFilters, type SortKey } from '@/components/course/CourseFilters';
 import { SubscriberForm } from '@/components/subscriber/SubscriberForm';
 import { COURSE_PLATFORMS } from '@/lib/types';
 import type { Course, CourseCategory } from '@/lib/types';
-
-const SAVED_KEY = 'skillgig.saved_courses.v1';
+import { useSavedStore } from '@/lib/store/savedStore';
 
 export function LearnClient({ initialCourses }: { initialCourses: Course[] }) {
   const [category, setCategory] = useState<CourseCategory | 'all'>('all');
   const [sort, setSort] = useState<SortKey>('popular');
-  const [savedIds, setSavedIds] = useState<Set<string>>(() => new Set());
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<number | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const savedCount = useSavedStore((s) => s.savedCourses.length);
+  const storeHydrated = useSavedStore((s) => s._hasHydrated);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SAVED_KEY);
-      if (raw) {
-        const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) setSavedIds(new Set(arr));
-      }
-    } catch { /* ignore */ }
+    setHydrated(true);
   }, []);
-
-  useEffect(() => {
-    return () => {
-      if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    };
-  }, []);
-
-  function toggleSave(id: string) {
-    const course = initialCourses.find((c) => c.id === id);
-    setSavedIds((prev) => {
-      const next = new Set(prev);
-      let msg: string;
-      if (next.has(id)) {
-        next.delete(id);
-        msg = `“${course?.titleId ?? 'Course'}” dihapus dari simpanan`;
-      } else {
-        next.add(id);
-        msg = `“${course?.titleId ?? 'Course'}” disimpan`;
-      }
-      try {
-        localStorage.setItem(SAVED_KEY, JSON.stringify(Array.from(next)));
-      } catch { /* ignore quota */ }
-      setToast(msg);
-      if (toastTimer.current) window.clearTimeout(toastTimer.current);
-      toastTimer.current = window.setTimeout(() => setToast(null), 1800);
-      return next;
-    });
-  }
 
   const filtered = useMemo(() => {
     let list = initialCourses.slice();
@@ -74,7 +39,7 @@ export function LearnClient({ initialCourses }: { initialCourses: Course[] }) {
         stats={[
           { label: 'Total kursus',    value: initialCourses.length, accent: 'from-indigo-500 to-violet-500' },
           { label: 'Lagi dipelajari', value: enrolledCount,         accent: 'from-emerald-500 to-emerald-600' },
-          { label: 'Tersimpan',       value: savedIds.size,         accent: 'from-amber-500 to-amber-600' },
+          { label: 'Tersimpan',       value: hydrated && storeHydrated ? savedCount : '—', accent: 'from-amber-500 to-amber-600' },
           { label: 'Gratis',          value: freeCount,             accent: 'from-violet-500 to-violet-600' },
         ]}
       />
@@ -111,8 +76,6 @@ export function LearnClient({ initialCourses }: { initialCourses: Course[] }) {
             <CourseCard
               key={c.id}
               course={c}
-              saved={savedIds.has(c.id)}
-              onToggleSave={toggleSave}
             />
           ))}
         </div>
@@ -128,13 +91,6 @@ export function LearnClient({ initialCourses }: { initialCourses: Course[] }) {
           </span>
         ))}
       </div>
-
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl shadow-2xl bg-slate-900 text-white text-sm font-semibold pointer-events-none">
-          ✓ {toast}
-        </div>
-      )}
     </>
   );
 }

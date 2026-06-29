@@ -5,7 +5,9 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { ButtonLink } from '@/components/ui/Button';
 import { ErrorState } from '@/components/feedback/ErrorState';
+import { ProfileSavedSections } from '@/components/profile/ProfileSavedSections';
 import { getUser, isSupabaseConfigured } from '@/lib/supabase/queries';
+import { getCurrentUser } from '@/lib/supabase/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,10 +28,14 @@ export default async function ProfilePage({
     );
   }
 
-  const user = await getUser(params.id);
+  const [user, currentUser] = await Promise.all([
+    getUser(params.id),
+    getCurrentUser(),
+  ]);
   if (!user) notFound();
 
   const isFreelancer = user.role === 'freelancer';
+  const isMe = currentUser?.id === user.id;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
@@ -100,6 +106,14 @@ export default async function ProfilePage({
           </>
         )}
       </div>
+
+      {/* Saved items (only when viewing your own profile) */}
+      {isMe && (
+        <section>
+          <h2 className="text-xl font-bold text-slate-900 mb-4">Simpanan saya</h2>
+          <ProfileSavedSections />
+        </section>
+      )}
     </div>
   );
 }

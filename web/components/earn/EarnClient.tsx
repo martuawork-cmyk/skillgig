@@ -10,8 +10,6 @@ import { CATEGORIES, type GigCategory, type GigPlatform } from '@/lib/types';
 import { formatIDR } from '@/lib/utils';
 import type { Gig } from '@/lib/types';
 
-const SAVED_EARN_KEY = 'skillgig.saved_earn_gigs.v1';
-
 type BudgetBucket = 'all' | 'under-5' | '5-10' | '10-20' | 'over-20';
 
 const BUDGET_BUCKETS: { value: BudgetBucket; label: string }[] = [
@@ -35,47 +33,14 @@ export function EarnClient({ initialGigs }: { initialGigs: Gig[] }) {
   const [category, setCategory] = useState<GigCategory | 'all'>('all');
   const [platform, setPlatform] = useState<GigPlatform | 'all'>('all');
   const [budget, setBudget] = useState<BudgetBucket>('all');
-  const [savedIds, setSavedIds] = useState<Set<string>>(() => new Set());
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SAVED_EARN_KEY);
-      if (raw) {
-        const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) setSavedIds(new Set(arr));
-      }
-    } catch { /* ignore */ }
-  }, []);
 
   useEffect(() => {
     return () => {
       if (toastTimer.current) window.clearTimeout(toastTimer.current);
     };
   }, []);
-
-  function toggleSave(id: string) {
-    const gig = initialGigs.find((g) => g.id === id);
-    setSavedIds((prev) => {
-      const next = new Set(prev);
-      let msg: string;
-      if (next.has(id)) {
-        next.delete(id);
-        msg = `“${gig?.titleId ?? 'Gig'}” dihapus dari simpanan`;
-      } else {
-        next.add(id);
-        msg = `“${gig?.titleId ?? 'Gig'}” disimpan`;
-      }
-      try {
-        localStorage.setItem(SAVED_EARN_KEY, JSON.stringify(Array.from(next)));
-      } catch { /* ignore quota */ }
-      setToast(msg);
-      if (toastTimer.current) window.clearTimeout(toastTimer.current);
-      toastTimer.current = window.setTimeout(() => setToast(null), 1800);
-      return next;
-    });
-  }
 
   function handleApply(id: string) {
     const gig = initialGigs.find((g) => g.id === id);
@@ -251,8 +216,6 @@ export function EarnClient({ initialGigs }: { initialGigs: Gig[] }) {
             <EarnGigCard
               key={g.id}
               gig={g}
-              saved={savedIds.has(g.id)}
-              onToggleSave={toggleSave}
               onApply={handleApply}
             />
           ))}

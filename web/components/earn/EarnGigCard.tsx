@@ -15,31 +15,29 @@ import {
   levelColor,
   cn,
 } from '@/lib/utils';
+import { useSavedStore } from '@/lib/store/savedStore';
 
 type Props = {
   gig: Gig;
-  /** Controlled save state. If undefined, internal state is used. */
-  saved?: boolean;
-  onToggleSave?: (id: string) => void;
   onApply?: (id: string) => void;
 };
 
-export function EarnGigCard({ gig, saved: savedProp, onToggleSave, onApply }: Props) {
-  const isSavedControlled = savedProp !== undefined && onToggleSave !== undefined;
-  const [internalSaved, setInternalSaved] = useState(false);
-  const saved = isSavedControlled ? (savedProp as boolean) : internalSaved;
-
+export function EarnGigCard({ gig, onApply }: Props) {
+  const saved = useSavedStore((s) => s.isGigSaved(gig.id));
+  const toggleSaveGig = useSavedStore((s) => s.toggleSaveGig);
   const [applied, setApplied] = useState(false);
 
   const handleToggleSave = () => {
-    if (isSavedControlled) (onToggleSave as (id: string) => void)(gig.id);
-    else setInternalSaved((v) => !v);
+    toggleSaveGig({
+      id: gig.id,
+      title: gig.titleId,
+      platform: gig.platform,
+    });
   };
 
   const handleApply = () => {
     if (onApply) onApply(gig.id);
     setApplied(true);
-    // Reset after 2s
     setTimeout(() => setApplied(false), 2000);
   };
 

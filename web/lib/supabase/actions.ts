@@ -159,3 +159,39 @@ export async function signOut(): Promise<void> {
     console.warn('[signOut] caught:', err);
   }
 }
+
+/**
+ * Subscribe the current user's email to a skill alert.
+ * Inserts a row into public.subscribers with email = auth.user.email
+ * and skill_id = the given skill.
+ *
+ * Returns { error } on failure, or empty object on success.
+ * Idempotent: if the (email, skill_id) pair already exists (Postgres 23505),
+ * treats it as success.
+ */
+export async function subscribeSkillAlert(
+  skillId: string,
+): Promise<{ error?: string }> {
+  try {
+    const sb = createClient();
+    const { data: auth } = await sb.auth.getUser();
+    if (!auth?.user?.email) {
+      return { error: 'Anda harus login untuk mengaktifkan alert.' };
+    }
+    const { error } = await sb.from('subscribers').insert({
+      email: auth.user.email,
+      skill_id: skillId,
+    });
+    if (!error) return {};
+    if (error.code === '23505') return {}; // already subscribed
+    return { error: error.message };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('env vars missing')) {
+      return { error: 'Belum terkoneksi ke Supabase.' };
+    }
+    // eslint-disable-next-line no-console
+    console.warn('[subscribeSkillAlert] caught:', err);
+    return { error: msg };
+  }
+}

@@ -1,32 +1,19 @@
 'use client';
 
-import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { COURSE_PLATFORMS, type Course } from '@/lib/types';
 import { formatIDR, formatCompact, levelColor, levelLabel, cn } from '@/lib/utils';
+import { useSavedStore } from '@/lib/store/savedStore';
 
 type Props = {
   course: Course;
-  /** Optional controlled save state. If omitted, the card manages its own. */
-  saved?: boolean;
-  /** Optional controlled toggle handler. If omitted, internal state is used. */
-  onToggleSave?: (id: string) => void;
 };
 
-export function CourseCard({ course, saved: savedProp, onToggleSave }: Props) {
+export function CourseCard({ course }: Props) {
   const isFree = course.price === 0;
-  const isControlled = savedProp !== undefined && onToggleSave !== undefined;
-  const [internalSaved, setInternalSaved] = useState(false);
-  const saved = isControlled ? (savedProp as boolean) : internalSaved;
-
-  const handleToggle = () => {
-    if (isControlled) {
-      (onToggleSave as (id: string) => void)(course.id);
-    } else {
-      setInternalSaved((v) => !v);
-    }
-  };
+  const saved = useSavedStore((s) => s.isCourseSaved(course.id));
+  const toggleSaveCourse = useSavedStore((s) => s.toggleSaveCourse);
 
   return (
     <Card className="h-full hover:border-indigo-300 hover:shadow-md transition flex flex-col">
@@ -82,7 +69,17 @@ export function CourseCard({ course, saved: savedProp, onToggleSave }: Props) {
               </span>
             )}
           </div>
-          <SaveButton saved={saved} onClick={handleToggle} />
+          <SaveButton
+            saved={saved}
+            onClick={() =>
+              toggleSaveCourse({
+                id: course.id,
+                title: course.titleId,
+                platform: course.platform,
+                thumbnail: course.thumbnail,
+              })
+            }
+          />
         </div>
       </div>
     </Card>

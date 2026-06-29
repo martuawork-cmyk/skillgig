@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardBody } from '@/components/ui/Card';
 import { StatsGrid } from '@/components/ui/StatsGrid';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -8,56 +8,23 @@ import { FilterPills } from '@/components/ui/FilterPills';
 import { GigCard } from '@/components/gig/GigCard';
 import { CATEGORIES, LEVELS, type GigCategory, type SkillLevel } from '@/lib/types';
 import type { Gig } from '@/lib/types';
+import { useSavedStore } from '@/lib/store/savedStore';
 
 type Sort = 'newest' | 'budget-high' | 'budget-low' | 'applicants';
-const SAVED_GIGS_KEY = 'skillgig.saved_gigs.v1';
 
 export function GigsClient({ initialGigs }: { initialGigs: Gig[] }) {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<GigCategory | 'all'>('all');
   const [level, setLevel] = useState<SkillLevel | 'all'>('all');
   const [sort, setSort] = useState<Sort>('newest');
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(() => new Set());
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<number | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const savedCount = useSavedStore((s) => s.savedGigs.length);
+  const storeHydrated = useSavedStore((s) => s._hasHydrated);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SAVED_GIGS_KEY);
-      if (raw) {
-        const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) setBookmarkedIds(new Set(arr));
-      }
-    } catch { /* ignore */ }
+    setHydrated(true);
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    };
-  }, []);
-
-  function toggleBookmark(id: string) {
-    const gig = initialGigs.find((g) => g.id === id);
-    setBookmarkedIds((prev) => {
-      const next = new Set(prev);
-      let msg: string;
-      if (next.has(id)) {
-        next.delete(id);
-        msg = `“${gig?.titleId ?? 'Gig'}” dihapus dari bookmark`;
-      } else {
-        next.add(id);
-        msg = `“${gig?.titleId ?? 'Gig'}” disimpan`;
-      }
-      try {
-        localStorage.setItem(SAVED_GIGS_KEY, JSON.stringify(Array.from(next)));
-      } catch { /* ignore quota */ }
-      setToast(msg);
-      if (toastTimer.current) window.clearTimeout(toastTimer.current);
-      toastTimer.current = window.setTimeout(() => setToast(null), 1800);
-      return next;
-    });
-  }
 
   const filtered = useMemo(() => {
     let list = initialGigs.slice();
@@ -192,9 +159,9 @@ export function GigsClient({ initialGigs }: { initialGigs: Gig[] }) {
             <p className="text-sm text-slate-600">
               <span className="font-semibold text-slate-900">{filtered.length}</span> gigs ditemukan
             </p>
-            {bookmarkedIds.size > 0 && (
+            {hydrated && storeHydrated && savedCount > 0 && (
               <p className="text-xs text-emerald-700">
-                🔖 {bookmarkedIds.size} tersimpan
+                🔖 {savedCount} tersimpan
               </p>
             )}
           </div>
@@ -214,20 +181,12 @@ export function GigsClient({ initialGigs }: { initialGigs: Gig[] }) {
                 <GigCard
                   key={g.id}
                   gig={g}
-                  bookmarked={bookmarkedIds.has(g.id)}
-                  onToggleBookmark={toggleBookmark}
                 />
               ))}
             </div>
           )}
         </div>
       </div>
-
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl shadow-2xl bg-slate-900 text-white text-sm font-semibold pointer-events-none">
-          ✓ {toast}
-        </div>
-      )}
     </div>
   );
 }

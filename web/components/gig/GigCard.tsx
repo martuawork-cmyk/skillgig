@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Tag } from '@/components/ui/Tag';
@@ -15,27 +14,24 @@ import {
   levelColor,
   cn,
 } from '@/lib/utils';
+import { useSavedStore } from '@/lib/store/savedStore';
 
 type Props = {
   gig: Gig;
-  /** Optional controlled bookmark state. If omitted, internal state. */
-  bookmarked?: boolean;
-  onToggleBookmark?: (id: string) => void;
 };
 
-export function GigCard({ gig, bookmarked: bookmarkedProp, onToggleBookmark }: Props) {
-  const isControlled = bookmarkedProp !== undefined && onToggleBookmark !== undefined;
-  const [internal, setInternal] = useState(false);
-  const bookmarked = isControlled ? (bookmarkedProp as boolean) : internal;
+export function GigCard({ gig }: Props) {
+  const bookmarked = useSavedStore((s) => s.isGigSaved(gig.id));
+  const toggleSaveGig = useSavedStore((s) => s.toggleSaveGig);
 
   const handleToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isControlled) {
-      (onToggleBookmark as (id: string) => void)(gig.id);
-    } else {
-      setInternal((v) => !v);
-    }
+    toggleSaveGig({
+      id: gig.id,
+      title: gig.titleId,
+      platform: gig.platform,
+    });
   };
 
   return (
