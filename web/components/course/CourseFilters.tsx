@@ -1,7 +1,7 @@
 'use client';
 
+import { FilterPills } from '@/components/ui/FilterPills';
 import { COURSE_CATEGORIES, type CourseCategory } from '@/lib/types';
-import { cn } from '@/lib/utils';
 
 export type SortKey = 'popular' | 'newest';
 
@@ -22,30 +22,13 @@ export function CourseFilters({
 }: Props) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      {/* Category pills */}
-      <div className="flex flex-wrap items-center gap-2">
-        {COURSE_CATEGORIES.map((c) => {
-          const isActive = c.value === active;
-          return (
-            <button
-              key={c.value}
-              type="button"
-              onClick={() => onChangeCategory(c.value)}
-              className={cn(
-                'px-3.5 py-1.5 text-sm font-semibold rounded-full transition active:scale-[.97]',
-                isActive
-                  ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-soft'
-                  : 'bg-white text-slate-700 border border-slate-200 hover:border-indigo-300 hover:text-indigo-700',
-              )}
-              aria-pressed={isActive}
-            >
-              {c.label}
-            </button>
-          );
-        })}
-      </div>
+      <FilterPills<CourseCategory | 'all'>
+        items={COURSE_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
+        active={active}
+        onChange={onChangeCategory}
+        ariaLabel="Filter kursus berdasarkan kategori"
+      />
 
-      {/* Sort + count */}
       <div className="flex items-center gap-3 shrink-0">
         <p className="text-sm text-slate-500">
           <span className="font-semibold text-slate-900">{resultCount}</span> course

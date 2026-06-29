@@ -1,5 +1,7 @@
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { StatsGrid } from '@/components/ui/StatsGrid';
+import { DonutChart } from '@/components/earn/DonutChart';
 import { formatIDR } from '@/lib/utils';
 
 const MONTHLY = [
@@ -11,12 +13,22 @@ const MONTHLY = [
   { month: 'Jun', value: 8_400_000 },
 ];
 
+// Earnings breakdown by gig category — mock distribution
+const CATEGORY_EARNINGS = [
+  { label: 'Web Dev',   value: 11_600_000, color: '#6366f1' }, // indigo-500
+  { label: 'Design',    value: 9_400_000,  color: '#ec4899' }, // pink-500
+  { label: 'Marketing', value: 3_200_000,  color: '#10b981' }, // emerald-500
+  { label: 'Writing',   value: 2_800_000,  color: '#f59e0b' }, // amber-500
+  { label: 'Data',      value: 2_100_000,  color: '#0ea5e9' }, // sky-500
+  { label: 'Video',     value: 1_100_000,  color: '#f43f5e' }, // rose-500
+];
+
 const PAYOUTS = [
-  { id: 'p1', gig: 'Landing page Tokopedia', date: '2026-06-25', amount: 12_500_000, status: 'cleared' },
-  { id: 'p2', gig: 'Migrasi WP ke Next.js', date: '2026-06-18', amount: 16_000_000, status: 'pending' },
-  { id: 'p3', gig: 'UI design onboarding flow', date: '2026-06-10', amount: 6_500_000,  status: 'cleared' },
-  { id: 'p4', gig: 'Dashboard analytics v2', date: '2026-05-28', amount: 9_800_000,  status: 'cleared' },
-  { id: 'p5', gig: 'Blog content SEO batch', date: '2026-05-20', amount: 4_200_000,  status: 'cleared' },
+  { id: 'p1', gig: 'Landing page Tokopedia', date: '2026-06-25', amount: 12_500_000, status: 'cleared' as const },
+  { id: 'p2', gig: 'Migrasi WP ke Next.js', date: '2026-06-18', amount: 16_000_000, status: 'pending' as const },
+  { id: 'p3', gig: 'UI design onboarding flow', date: '2026-06-10', amount: 6_500_000,  status: 'cleared' as const },
+  { id: 'p4', gig: 'Dashboard analytics v2', date: '2026-05-28', amount: 9_800_000,  status: 'cleared' as const },
+  { id: 'p5', gig: 'Blog content SEO batch', date: '2026-05-20', amount: 4_200_000,  status: 'cleared' as const },
 ];
 
 export default function EarnPage() {
@@ -24,6 +36,7 @@ export default function EarnPage() {
   const max = Math.max(...MONTHLY.map((m) => m.value));
   const thisMonth = MONTHLY[MONTHLY.length - 1].value;
   const pending = PAYOUTS.filter((p) => p.status === 'pending').reduce((s, p) => s + p.amount, 0);
+  const clearedCount = PAYOUTS.filter((p) => p.status === 'cleared').length;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8">
@@ -39,27 +52,15 @@ export default function EarnPage() {
         </p>
       </header>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <SummaryCard
-          label="Total earnings"
-          value={formatIDR(total)}
-          accent="from-indigo-600 to-violet-600"
-          trend="+24% YoY"
-        />
-        <SummaryCard
-          label="Bulan ini"
-          value={formatIDR(thisMonth)}
-          accent="from-emerald-500 to-emerald-600"
-          trend="+18% dari bulan lalu"
-        />
-        <SummaryCard
-          label="Pending payout"
-          value={formatIDR(pending)}
-          accent="from-amber-500 to-amber-600"
-          trend="2 transaksi dalam proses"
-        />
-      </div>
+      {/* Summary stats */}
+      <StatsGrid
+        cols={3}
+        stats={[
+          { label: 'Total earnings', value: formatIDR(total),         accent: 'from-indigo-600 to-violet-600',     icon: '💎' },
+          { label: 'Bulan ini',      value: formatIDR(thisMonth),     accent: 'from-emerald-500 to-emerald-600',   icon: '📈' },
+          { label: 'Pending payout', value: formatIDR(pending),       accent: 'from-amber-500 to-amber-600',       icon: '⏳' },
+        ]}
+      />
 
       {/* Monthly chart */}
       <Card>
@@ -91,10 +92,24 @@ export default function EarnPage() {
         </CardBody>
       </Card>
 
-      {/* Recent payouts */}
+      {/* Breakdown by category */}
       <Card>
         <CardHeader>
+          <h2 className="font-bold text-slate-900">Breakdown per kategori</h2>
+        </CardHeader>
+        <CardBody>
+          <DonutChart
+            data={CATEGORY_EARNINGS}
+            total={CATEGORY_EARNINGS.reduce((s, x) => s + x.value, 0)}
+          />
+        </CardBody>
+      </Card>
+
+      {/* Recent payouts */}
+      <Card>
+        <CardHeader className="flex items-center justify-between">
           <h2 className="font-bold text-slate-900">Payout terbaru</h2>
+          <span className="text-xs text-slate-500">{clearedCount} cleared · {PAYOUTS.length - clearedCount} pending</span>
         </CardHeader>
         <CardBody className="px-0 sm:px-0 py-0">
           <ul className="divide-y divide-slate-100">
@@ -118,30 +133,5 @@ export default function EarnPage() {
         </CardBody>
       </Card>
     </div>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  accent,
-  trend,
-}: {
-  label: string;
-  value: string;
-  accent: string;
-  trend: string;
-}) {
-  return (
-    <Card>
-      <CardBody>
-        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${accent} mb-3`} />
-        <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
-          {label}
-        </p>
-        <p className="text-2xl font-extrabold text-slate-900 mt-1">{value}</p>
-        <p className="text-xs text-emerald-600 mt-2 font-semibold">{trend}</p>
-      </CardBody>
-    </Card>
   );
 }

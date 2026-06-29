@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardBody } from '@/components/ui/Card';
+import { StatsGrid } from '@/components/ui/StatsGrid';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { CourseCard } from '@/components/course/CourseCard';
 import { CourseFilters, type SortKey } from '@/components/course/CourseFilters';
 import { courses } from '@/lib/mock';
@@ -93,12 +95,14 @@ export default function LearnPage() {
       </header>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatTile label="Total kursus" value={courses.length} />
-        <StatTile label="Lagi dipelajari" value={enrolledCount} accent="from-emerald-500 to-emerald-600" />
-        <StatTile label="Tersimpan" value={savedCount} accent="from-amber-500 to-amber-600" />
-        <StatTile label="Gratis" value={courses.filter((c) => c.price === 0).length} accent="from-violet-500 to-violet-600" />
-      </div>
+      <StatsGrid
+        stats={[
+          { label: 'Total kursus', value: courses.length, accent: 'from-indigo-500 to-violet-500' },
+          { label: 'Lagi dipelajari', value: enrolledCount, accent: 'from-emerald-500 to-emerald-600' },
+          { label: 'Tersimpan', value: savedCount, accent: 'from-amber-500 to-amber-600' },
+          { label: 'Gratis', value: courses.filter((c) => c.price === 0).length, accent: 'from-violet-500 to-violet-600' },
+        ]}
+      />
 
       {/* Filter bar */}
       <CourseFilters
@@ -111,17 +115,18 @@ export default function LearnPage() {
 
       {/* Grid */}
       {filtered.length === 0 ? (
-        <Card>
-          <CardBody className="text-center py-12">
-            <p className="text-slate-500">Tidak ada kursus untuk kategori ini.</p>
+        <EmptyState
+          icon="🔍"
+          title="Tidak ada kursus untuk kategori ini."
+          action={
             <button
               onClick={() => setCategory('all')}
-              className="mt-3 text-sm text-indigo-600 font-semibold hover:underline"
+              className="text-sm text-indigo-600 font-semibold hover:underline"
             >
               Lihat semua kursus →
             </button>
-          </CardBody>
-        </Card>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((c) => (
@@ -154,28 +159,6 @@ export default function LearnPage() {
           ✓ {toast}
         </div>
       )}
-    </div>
-  );
-}
-
-function StatTile({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: number;
-  accent?: string;
-}) {
-  return (
-    <div className="px-4 py-3 bg-white border border-slate-200 rounded-xl">
-      <div
-        className={`w-8 h-8 rounded-lg mb-2 ${accent ? `bg-gradient-to-br ${accent}` : 'bg-gradient-to-br from-indigo-500 to-violet-500'}`}
-      />
-      <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
-        {label}
-      </p>
-      <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{value}</p>
     </div>
   );
 }

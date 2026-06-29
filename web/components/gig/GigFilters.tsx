@@ -1,18 +1,64 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardBody } from '@/components/ui/Card';
+import { StatsGrid } from '@/components/ui/StatsGrid';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { FilterPills } from '@/components/ui/FilterPills';
 import { GigCard } from '@/components/gig/GigCard';
 import { gigs } from '@/lib/mock';
 import { CATEGORIES, LEVELS, type GigCategory, type SkillLevel } from '@/lib/types';
 
 type Sort = 'newest' | 'budget-high' | 'budget-low' | 'applicants';
 
+const SAVED_GIGS_KEY = 'skillgig.saved_gigs.v1';
+
 export function GigFilters() {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<GigCategory | 'all'>('all');
   const [level, setLevel] = useState<SkillLevel | 'all'>('all');
   const [sort, setSort] = useState<Sort>('newest');
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(() => new Set());
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SAVED_GIGS_KEY);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) setBookmarkedIds(new Set(arr));
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    };
+  }, []);
+
+  function toggleBookmark(id: string) {
+    const gig = gigs.find((g) => g.id === id);
+    setBookmarkedIds((prev) => {
+      const next = new Set(prev);
+      let msg: string;
+      if (next.has(id)) {
+        next.delete(id);
+        msg = `“${gig?.titleId ?? 'Gig'}” dihapus dari bookmark`;
+      } else {
+        next.add(id);
+        msg = `“${gig?.titleId ?? 'Gig'}” disimpan`;
+      }
+      try {
+        localStorage.setItem(SAVED_GIGS_KEY, JSON.stringify(Array.from(next)));
+      } catch { /* ignore quota */ }
+      setToast(msg);
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
+      toastTimer.current = window.setTimeout(() => setToast(null), 1800);
+      return next;
+    });
+  }
 
   const filtered = useMemo(() => {
     let list = [...gigs];
@@ -41,8 +87,28 @@ export function GigFilters() {
     setQ(''); setCat('all'); setLevel('all'); setSort('newest');
   }
 
+  // Stats
+  const totalGigs = gigs.length;
+  const avgBudget = Math.round(
+    gigs.reduce((s, g) => s + (g.budgetMin + g.budgetMax) / 2, 0) / gigs.length,
+  );
+  const openCategories = new Set(gigs.map((g) => g.category)).size;
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const newThisWeek = gigs.filter((g) => +new Date(g.postedAt) >= weekAgo).length;
+
   return (
     <div className="space-y-6">
+      {/* Stats */}
+      <StatsGrid
+        cols={4}
+        stats={[
+          { label: 'Total gigs',    value: totalGigs,       accent: 'from-indigo-500 to-violet-500', icon: '💼' },
+          { label: 'Avg budget',    value: 'Rp ' + Math.round(avgBudget / 1_000_000) + ' jt', accent: 'from-emerald-500 to-emerald-600', icon: '💰' },
+          { label: 'Kategori',      value: openCategories,  accent: 'from-amber-500 to-amber-600', icon: '🏷️' },
+          { label: 'Baru 7 hari',   value: newThisWeek,     accent: 'from-rose-500 to-rose-600', icon: '🆕' },
+        ]}
+      />
+
       {/* Search + Sort bar */}
       <Card>
         <CardBody className="flex flex-col md:flex-row gap-3">
@@ -78,41 +144,33 @@ export function GigFilters() {
         {/* Filters sidebar */}
         <aside className="lg:col-span-1 space-y-4">
           <Card>
-            <CardBody className="space-y-4">
+            <CardBody className="space-y-5">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 mb-2">Kategori</h3>
-                <div className="space-y-1.5">
-                  <FilterButton active={cat === 'all'} onClick={() => setCat('all')}>
-                    Semua
-                  </FilterButton>
-                  {CATEGORIES.map((c) => (
-                    <FilterButton
-                      key={c.value}
-                      active={cat === c.value}
-                      onClick={() => setCat(c.value)}
-                    >
-                      {c.label}
-                    </FilterButton>
-                  ))}
-                </div>
+                <FilterPills<GigCategory | 'all'>
+                  items={[
+                    { value: 'all', label: 'Semua' },
+                    ...CATEGORIES.map((c) => ({ value: c.value, label: c.label })),
+                  ]}
+                  active={cat}
+                  onChange={setCat}
+                  ariaLabel="Filter gigs berdasarkan kategori"
+                  className="flex-col items-stretch [&>button]:w-full [&>button]:text-left"
+                />
               </div>
 
               <div className="pt-4 border-t border-slate-100">
                 <h3 className="text-sm font-bold text-slate-900 mb-2">Level</h3>
-                <div className="space-y-1.5">
-                  <FilterButton active={level === 'all'} onClick={() => setLevel('all')}>
-                    Semua level
-                  </FilterButton>
-                  {LEVELS.map((l) => (
-                    <FilterButton
-                      key={l.value}
-                      active={level === l.value}
-                      onClick={() => setLevel(l.value)}
-                    >
-                      {l.label}
-                    </FilterButton>
-                  ))}
-                </div>
+                <FilterPills<SkillLevel | 'all'>
+                  items={[
+                    { value: 'all', label: 'Semua level' },
+                    ...LEVELS.map((l) => ({ value: l.value, label: l.label })),
+                  ]}
+                  active={level}
+                  onChange={setLevel}
+                  ariaLabel="Filter gigs berdasarkan level"
+                  className="flex-col items-stretch [&>button]:w-full [&>button]:text-left"
+                />
               </div>
 
               <button
@@ -131,49 +189,42 @@ export function GigFilters() {
             <p className="text-sm text-slate-600">
               <span className="font-semibold text-slate-900">{filtered.length}</span> gigs ditemukan
             </p>
+            {bookmarkedIds.size > 0 && (
+              <p className="text-xs text-emerald-700">
+                🔖 {bookmarkedIds.size} tersimpan
+              </p>
+            )}
           </div>
           {filtered.length === 0 ? (
-            <Card>
-              <CardBody className="text-center py-12">
-                <p className="text-slate-500">Tidak ada gig yang cocok dengan filter.</p>
-                <button onClick={reset} className="mt-3 text-sm text-indigo-600 hover:underline">
+            <EmptyState
+              icon="🔍"
+              title="Tidak ada gig yang cocok dengan filter."
+              action={
+                <button onClick={reset} className="text-sm text-indigo-600 font-semibold hover:underline">
                   Reset filter
                 </button>
-              </CardBody>
-            </Card>
+              }
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filtered.map((g) => (
-                <GigCard key={g.id} gig={g} />
+                <GigCard
+                  key={g.id}
+                  gig={g}
+                  bookmarked={bookmarkedIds.has(g.id)}
+                  onToggleBookmark={toggleBookmark}
+                />
               ))}
             </div>
           )}
         </div>
       </div>
-    </div>
-  );
-}
 
-function FilterButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={
-        'w-full text-left px-3 py-1.5 text-sm rounded-lg transition ' +
-        (active
-          ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold'
-          : 'text-slate-700 hover:bg-slate-100')
-      }
-    >
-      {children}
-    </button>
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl shadow-2xl bg-slate-900 text-white text-sm font-semibold pointer-events-none">
+          ✓ {toast}
+        </div>
+      )}
+    </div>
   );
 }
