@@ -252,3 +252,40 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================================
 -- End of seed. Total: 11 skills, 6 users, 6 courses, 10 gigs.
 -- ============================================================================
+-- ----- applications (run after 005_applications.sql) ---------------------
+-- These reference the gigs (g1, g7, g3, g5) + user (u2) seeded above.
+-- Note: gig id 'g7' was named 'g7' in the original gigs seed.
+INSERT INTO applications (id, gig_id, freelancer_id, proposed_rate, proposed_duration_weeks, cover_letter, status, applied_at) VALUES
+  (
+    '55555555-5555-5555-5555-555555555501',
+    '44444444-4444-4444-4444-444444444401',  -- g1 (landing page fintech)
+    '22222222-2222-2222-2222-222222222202',  -- u2 (Sari)
+    12000000, 2,
+    'Halo! Saya Sari, full-stack developer dengan 5 tahun pengalaman. Sudah beberapa kali bikin landing page untuk startup fintech, portfolio bisa saya share.',
+    'pending', '2026-06-26T10:00:00Z'
+  ),
+  (
+    '55555555-5555-5555-5555-555555555502',
+    '44444444-4444-4444-4444-444444444407',  -- g7 (WP → Next.js)
+    '22222222-2222-2222-2222-222222222202',  -- u2
+    16000000, 5,
+    'Saya pernah migrasi 3 blog WordPress ke Next.js. Bisa preserve SEO dan struktur URL pakai redirects 301.',
+    'accepted', '2026-06-24T15:30:00Z'
+  ),
+  (
+    '55555555-5555-5555-5555-555555555503',
+    '44444444-4444-4444-4444-444444444403',  -- g3 (SEO blog)
+    '22222222-2222-2222-2222-222222222202',  -- u2
+    600000, 4,
+    'Meski background saya lebih ke tech writing, saya tertarik explore SEO writing. Saya bisa kasih sample dulu.',
+    'rejected', '2026-06-23T09:00:00Z'
+  ),
+  (
+    '55555555-5555-5555-5555-555555555504',
+    '44444444-4444-4444-4444-444444444405',  -- g5 (analytics dashboard)
+    '22222222-2222-2222-2222-222222222202',  -- u2
+    11000000, 4,
+    'Saya biasa pakai Streamlit untuk internal tools di pekerjaan saya. Tertarik banget sama project ini!',
+    'pending', '2026-06-28T08:15:00Z'
+  )
+ON CONFLICT (id) DO NOTHING;

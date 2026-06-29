@@ -12,6 +12,8 @@ import type {
   SkillLevel,
   User,
   GigPlatform,
+  Application,
+  ApplicationStatus,
 } from '@/lib/types';
 
 // Re-export so pages have a single import surface.
@@ -340,4 +342,58 @@ function deriveProgress(seed: string, idx: number, min: number, max: number): nu
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
   const range = max - min;
   return min + Math.abs(h) % range;
+}
+
+// ============================================================================
+// Applications
+// ============================================================================
+
+type ApplicationRow = {
+  id: string;
+  gig_id: string;
+  freelancer_id: string;
+  proposed_rate: number;
+  proposed_duration_weeks: number;
+  cover_letter: string;
+  status: string;
+  applied_at: string;
+};
+
+const APPLICATION_STATUSES: ReadonlySet<string> = new Set([
+  'pending',
+  'accepted',
+  'rejected',
+]);
+
+function mapApplicationRow(r: ApplicationRow): Application {
+  return {
+    id: r.id,
+    gigId: r.gig_id,
+    freelancerId: r.freelancer_id,
+    proposedRate: r.proposed_rate,
+    proposedDurationWeeks: r.proposed_duration_weeks,
+    coverLetter: r.cover_letter,
+    status: (APPLICATION_STATUSES.has(r.status) ? r.status : 'pending') as ApplicationStatus,
+    appliedAt: r.applied_at,
+  };
+}
+
+/**
+ * Fetch applications for a specific freelancer.
+ * In Phase 5 (no auth), pass an explicit `freelancerId`. When auth lands,
+ * we'll read this from the session instead.
+ */
+export async function getApplicationsByFreelancer(
+  freelancerId: string,
+): Promise<Application[]> {
+  return safeQuery('getApplicationsByFreelancer', async () => {
+    const sb = await createClient();
+    const { data, error } = await sb
+      .from('applications')
+      .select('*')
+      .eq('freelancer_id', freelancerId)
+      .order('applied_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(mapApplicationRow);
+  }, []);
 }
