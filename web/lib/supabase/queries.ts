@@ -11,6 +11,7 @@ import type {
   Skill,
   SkillLevel,
   User,
+  GigPlatform,
 } from '@/lib/types';
 
 // Re-export so pages have a single import surface.
@@ -50,6 +51,12 @@ const GIG_CATEGORIES: ReadonlySet<string> = new Set([
   'data',
   'video',
 ]);
+const GIG_PLATFORMS: ReadonlySet<string> = new Set([
+  'Upwork',
+  'Fiverr',
+  'Projects.co.id',
+  'Sribulancer',
+]);
 const SKILL_LEVELS: ReadonlySet<string> = new Set([
   'beginner',
   'intermediate',
@@ -64,6 +71,9 @@ function asCourseCategory(s: string): CourseCategory {
 }
 function asGigCategory(s: string): GigCategory {
   return (GIG_CATEGORIES.has(s) ? s : 'web-dev') as GigCategory;
+}
+function asGigPlatform(s: string): GigPlatform {
+  return (GIG_PLATFORMS.has(s) ? s : 'Upwork') as GigPlatform;
 }
 function asSkillLevel(s: string): SkillLevel {
   return (SKILL_LEVELS.has(s) ? s : 'beginner') as SkillLevel;
@@ -192,6 +202,8 @@ function mapGigRow(r: GigRow): Gig {
     clientId: '',
     applicantsCount: r.applicants_count,
     postedAt: r.created_at,
+    platform: asGigPlatform(r.platform),
+    url: r.url,
   };
 }
 

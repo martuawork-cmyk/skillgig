@@ -27,7 +27,22 @@ export interface Gig {
   clientId: string;
   applicantsCount: number;
   postedAt: string; // ISO
+  platform: GigPlatform;
+  url: string;
 }
+
+export type GigPlatform =
+  | 'Upwork'
+  | 'Fiverr'
+  | 'Projects.co.id'
+  | 'Sribulancer';
+
+export const GIG_PLATFORMS: Record<GigPlatform, string> = {
+  'Upwork':         'bg-sky-100 text-sky-700',
+  'Fiverr':         'bg-emerald-100 text-emerald-700',
+  'Projects.co.id': 'bg-orange-100 text-orange-700',
+  'Sribulancer':    'bg-violet-100 text-violet-700',
+};
 
 export interface Course {
   id: string;
