@@ -61,6 +61,7 @@ export function levelColor(l: SkillLevel): string {
 export function statusColor(s: ApplicationStatus): string {
   switch (s) {
     case 'pending':  return 'bg-amber-100 text-amber-700';
+    case 'reviewed': return 'bg-sky-100 text-sky-700';
     case 'accepted': return 'bg-emerald-100 text-emerald-700';
     case 'rejected': return 'bg-rose-100 text-rose-700';
   }
@@ -69,6 +70,7 @@ export function statusColor(s: ApplicationStatus): string {
 export function statusLabel(s: ApplicationStatus): string {
   switch (s) {
     case 'pending':  return 'Pending';
+    case 'reviewed': return 'Reviewed';
     case 'accepted': return 'Accepted';
     case 'rejected': return 'Rejected';
   }

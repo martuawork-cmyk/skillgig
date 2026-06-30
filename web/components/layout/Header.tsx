@@ -13,6 +13,7 @@ const NAV = [
 
 type Props = {
   user: {
+    id: string;
     name: string;
     initials: string;
     role: 'client' | 'freelancer';
@@ -75,12 +76,21 @@ export function Header({ user }: Props) {
               {item.label}
             </Link>
           ))}
+          {user && (
+            <Link
+              href={`/profile/${user.id}`}
+              className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+            >
+              Profil Saya
+            </Link>
+          )}
         </nav>
 
         {/* Desktop CTA / User menu */}
         <div className="hidden md:flex items-center gap-2">
           {user ? (
             <UserMenu
+              userId={user.id}
               name={user.name}
               initials={user.initials}
               role={user.role}
@@ -109,6 +119,7 @@ export function Header({ user }: Props) {
         <div className="md:hidden flex items-center gap-2">
           {user && (
             <UserMenu
+              userId={user.id}
               name={user.name}
               initials={user.initials}
               role={user.role}
@@ -149,6 +160,15 @@ export function Header({ user }: Props) {
               {item.label}
             </Link>
           ))}
+          {user && (
+            <Link
+              href={`/profile/${user.id}`}
+              onClick={close}
+              className="block px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition"
+            >
+              Profil Saya
+            </Link>
+          )}
           {!user && (
             <>
               <Link

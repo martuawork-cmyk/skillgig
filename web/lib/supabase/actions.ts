@@ -65,7 +65,7 @@ const PASSWORD_MIN = 6;
 export type AuthRole = 'client' | 'freelancer';
 
 export type AuthResult =
-  | { ok: true }
+  | { ok: true; userId: string }
   | { ok: false; reason: 'invalid-input' | 'weak-password' | 'auth-failed' | 'network' | 'unknown'; message?: string };
 
 type AuthFailureReason = 'invalid-input' | 'weak-password' | 'auth-failed' | 'network' | 'unknown';
@@ -97,13 +97,16 @@ export async function signInWithPassword(
 
   try {
     const sb = createClient();
-    const { error } = await sb.auth.signInWithPassword({
+    const { data, error } = await sb.auth.signInWithPassword({
       email: trimmed,
       password,
     });
-    if (!error) return { ok: true };
-    const f = friendlyAuthMessage(error.message);
-    return { ok: false, reason: f.reason, message: f.message };
+    if (!error && data.user) return { ok: true, userId: data.user.id };
+    if (error) {
+      const f = friendlyAuthMessage(error.message);
+      return { ok: false, reason: f.reason, message: f.message };
+    }
+    return { ok: false, reason: 'unknown', message: 'Login succeeded but no user returned.' };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes('env vars missing')) {
@@ -129,16 +132,19 @@ export async function signUpWithPassword(
 
   try {
     const sb = createClient();
-    const { error } = await sb.auth.signUp({
+    const { data, error } = await sb.auth.signUp({
       email: trimmedEmail,
       password,
       options: {
         data: { name: trimmedName, role },
       },
     });
-    if (!error) return { ok: true };
-    const f = friendlyAuthMessage(error.message);
-    return { ok: false, reason: f.reason, message: f.message };
+    if (!error && data.user) return { ok: true, userId: data.user.id };
+    if (error) {
+      const f = friendlyAuthMessage(error.message);
+      return { ok: false, reason: f.reason, message: f.message };
+    }
+    return { ok: false, reason: 'unknown', message: 'Signup succeeded but no user returned.' };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes('env vars missing')) {

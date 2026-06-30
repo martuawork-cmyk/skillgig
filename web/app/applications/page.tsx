@@ -51,6 +51,7 @@ export default async function ApplicationsPage() {
   const stats = {
     total:    apps.length,
     pending:  apps.filter((a) => a.status === 'pending').length,
+    reviewed: apps.filter((a) => a.status === 'reviewed').length,
     accepted: apps.filter((a) => a.status === 'accepted').length,
     rejected: apps.filter((a) => a.status === 'rejected').length,
   };
@@ -64,10 +65,11 @@ export default async function ApplicationsPage() {
       </header>
       {/* Stats */}
       <StatsGrid
-        cols={4}
+        cols={5}
         stats={[
           { label: 'Total',    value: stats.total,    accent: 'from-indigo-500 to-violet-500', icon: '📨' },
           { label: 'Pending',  value: stats.pending,  accent: 'from-amber-500 to-amber-600',   icon: '⏳' },
+          { label: 'Reviewed', value: stats.reviewed, accent: 'from-sky-500 to-sky-600',        icon: '👀' },
           { label: 'Accepted', value: stats.accepted, accent: 'from-emerald-500 to-emerald-600', icon: '✅' },
           { label: 'Rejected', value: stats.rejected, accent: 'from-rose-500 to-rose-600',     icon: '❌' },
         ]}

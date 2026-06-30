@@ -1,4 +1,3 @@
-// Barrel export for mock data
 export { gigs, getGig } from './gigs';
 export { courses, getCourse } from './courses';
 export { userSkills, recommendedSkills } from './skills';

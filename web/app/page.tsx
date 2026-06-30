@@ -4,7 +4,8 @@ import { ButtonLink } from '@/components/ui/Button';
 import { GigCard } from '@/components/gig/GigCard';
 import { CourseCard } from '@/components/course/CourseCard';
 import { NewsletterSection } from '@/components/newsletter/NewsletterSection';
-import { getCourses, getGigs, isSupabaseConfigured } from '@/lib/supabase/queries';
+import { getCourses, getGigs, getHomepageStats, getSkillsForNewsletter, isSupabaseConfigured } from '@/lib/supabase/queries';
+import { formatCompact, formatIDR } from '@/lib/utils';
 
 const JOURNEY = [
   { icon: '📚', label: 'Learn',  desc: 'Pelajari skill digital dari kursus terstruktur', href: '/learn' },
@@ -12,13 +13,6 @@ const JOURNEY = [
   { icon: '🔍', label: 'Discover', desc: 'Temukan gig yang sesuai skill kamu',          href: '/gigs' },
   { icon: '✉️', label: 'Apply',  desc: 'Kirim proposal & dapatkan pekerjaan',           href: '/applications' },
   { icon: '💰', label: 'Earn',   desc: 'Terima pembayaran & tarik ke rekening',         href: '/earn' },
-];
-
-const STATS = [
-  { value: '1.2k+', label: 'Active gigs' },
-  { value: '5.8k',  label: 'Freelancers' },
-  { value: 'Rp 24M', label: 'Avg. project' },
-  { value: '4.8★',  label: 'Client rating' },
 ];
 
 export const dynamic = 'force-dynamic';
@@ -30,6 +24,18 @@ export default async function Home() {
   const ready = isSupabaseConfigured();
   const featuredGigs    = ready ? (await getGigs()).slice(0, 3)    : [];
   const featuredCourses = ready ? (await getCourses()).slice(0, 3) : [];
+  const stats = ready ? await getHomepageStats() : { totalGigs: 0, totalUsers: 0, avgBudgetMax: null };
+  // Newsletter dropdown options. Falls back to an empty list when Supabase
+  // isn't reachable — the client component then renders its own error state
+  // and asks the visitor to retry later.
+  const skills = ready ? await getSkillsForNewsletter() : [];
+
+  const STATS = [
+    { value: formatCompact(stats.totalGigs),  label: 'Active gigs' },
+    { value: formatCompact(stats.totalUsers), label: 'Freelancers' },
+    { value: stats.avgBudgetMax != null ? formatIDR(Math.round(stats.avgBudgetMax)) : '—', label: 'Avg. project' },
+    { value: '4.8★', label: 'Client rating' },
+  ];
 
   return (
     <div>
@@ -44,7 +50,7 @@ export default async function Home() {
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold mb-6">
               <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-              Phase 1 · UI Shell dengan mock data
+              © 2026 SkillGig.id · All rights reserved.
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.05]">
               Belajar skill digital,<br />
@@ -161,7 +167,7 @@ export default async function Home() {
 
       {/* Newsletter */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <NewsletterSection />
+        <NewsletterSection skills={skills} />
       </section>
 
       {/* CTA */}

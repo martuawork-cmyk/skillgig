@@ -6,7 +6,8 @@ import { Tag } from '@/components/ui/Tag';
 import { Avatar } from '@/components/ui/Avatar';
 import { ApplyForm } from '@/components/gig/ApplyForm';
 import { ErrorState } from '@/components/feedback/ErrorState';
-import { getGig, getUser, isSupabaseConfigured } from '@/lib/supabase/queries';
+import { getGig, getUser, hasAppliedToGig, isSupabaseConfigured } from '@/lib/supabase/queries';
+import { getCurrentUser } from '@/lib/supabase/session';
 import {
   formatIDR,
   timeAgo,
@@ -40,6 +41,10 @@ export default async function GigDetailPage({
 
   // Try to fetch client user — gracefully handle if no client FK
   const client = gig.clientId ? await getUser(gig.clientId) : null;
+
+  // Apply-form context: who is viewing this page, and did they already apply?
+  const currentUser = await getCurrentUser();
+  const alreadyApplied = currentUser ? await hasAppliedToGig(gig.id) : false;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
@@ -143,7 +148,11 @@ export default async function GigDetailPage({
 
         <aside className="lg:col-span-1">
           <div className="lg:sticky lg:top-32">
-            <ApplyForm gigId={gig.id} />
+            <ApplyForm
+            gigId={gig.id}
+            isAuthed={Boolean(currentUser)}
+            alreadyApplied={alreadyApplied}
+          />
           </div>
         </aside>
       </div>

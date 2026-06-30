@@ -29,9 +29,11 @@ export function SignupForm() {
       setSuccess(true);
       // If email confirmation is OFF in Supabase, session is created immediately.
       // If email confirmation is ON, the user must check their inbox first.
-      // Either way, we redirect to the next URL after a short pause.
+      // Either way, we redirect to the user's profile after a short pause.
+      // If a `next` was explicitly provided we honor it, otherwise we go to /profile/[userId].
+      const redirectTo = nextUrl !== '/' ? nextUrl : `/profile/${result.userId}`;
       setTimeout(() => {
-        window.location.href = nextUrl;
+        window.location.href = redirectTo;
       }, 1200);
     } else {
       setErrorMsg(result.message ?? 'Gagal daftar. Coba lagi.');

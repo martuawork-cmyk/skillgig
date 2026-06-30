@@ -20,7 +20,7 @@ export function Footer() {
               menghasilkan uang dari karya kamu.
             </p>
             <p className="text-xs text-slate-500 mt-4">
-              Phase 1 · UI shell with mock data
+              © 2026 SkillGig.id · All rights reserved.
             </p>
           </div>
 

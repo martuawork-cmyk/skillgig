@@ -4,6 +4,8 @@
 # Reference docs & sibling tools (not part of the Next.js app)
 SkillGig PRD.pdf
 prd-studio.html
+SkillGig_PRD_Phase2_Lanjutan.md
 
 # Claude Code local state
 .claude/
+prompts/

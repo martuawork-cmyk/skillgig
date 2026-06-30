@@ -18,6 +18,7 @@ export const gigs: Gig[] = [
     postedAt: '2026-06-25T10:00:00Z',
     platform: 'Projects.co.id',
     url: 'https://projects.co.id/gigs/g1',
+    status: 'published',
   },
   {
     id: 'g2',
@@ -36,6 +37,7 @@ export const gigs: Gig[] = [
     postedAt: '2026-06-26T08:30:00Z',
     platform: 'Sribulancer',
     url: 'https://sribulancer.com/gigs/g2',
+    status: 'published',
   },
   {
     id: 'g3',
@@ -54,6 +56,7 @@ export const gigs: Gig[] = [
     postedAt: '2026-06-22T14:15:00Z',
     platform: 'Projects.co.id',
     url: 'https://projects.co.id/gigs/g3',
+    status: 'published',
   },
   {
     id: 'g4',
@@ -72,6 +75,7 @@ export const gigs: Gig[] = [
     postedAt: '2026-06-24T16:20:00Z',
     platform: 'Fiverr',
     url: 'https://fiverr.com/gigs/g4',
+    status: 'published',
   },
   {
     id: 'g5',
@@ -90,6 +94,7 @@ export const gigs: Gig[] = [
     postedAt: '2026-06-23T13:00:00Z',
     platform: 'Upwork',
     url: 'https://upwork.com/gigs/g5',
+    status: 'published',
   },
   {
     id: 'g6',
@@ -108,6 +113,7 @@ export const gigs: Gig[] = [
     postedAt: '2026-06-20T09:00:00Z',
     platform: 'Sribulancer',
     url: 'https://sribulancer.com/gigs/g6',
+    status: 'published',
   },
 ];
 

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Tag } from '@/components/ui/Tag';
+import { useToast, Toast } from '@/components/ui/Toast';
 import type { Gig } from '@/lib/types';
 import {
   formatIDR,
@@ -23,15 +24,22 @@ type Props = {
 export function GigCard({ gig }: Props) {
   const bookmarked = useSavedStore((s) => s.isGigSaved(gig.id));
   const toggleSaveGig = useSavedStore((s) => s.toggleSaveGig);
+  const { toast, showToast } = useToast();
 
-  const handleToggle = (e: React.MouseEvent) => {
+  const handleToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleSaveGig({
+    const wasSaved = bookmarked;
+    // Optimistic UI: store toggles state synchronously, then awaits Supabase.
+    void toggleSaveGig({
       id: gig.id,
       title: gig.titleId,
       platform: gig.platform,
     });
+    showToast(
+      wasSaved ? 'Bookmark dihapus' : 'Gig tersimpan',
+      wasSaved ? 'info' : 'success',
+    );
   };
 
   return (
@@ -111,6 +119,8 @@ export function GigCard({ gig }: Props) {
           </svg>
         )}
       </button>
+
+      {toast && <Toast message={toast.message} tone={toast.tone} />}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { useToast, Toast } from '@/components/ui/Toast';
 import { useSavedStore, type SavedCourse, type SavedGig } from '@/lib/store/savedStore';
 import { COURSE_PLATFORMS } from '@/lib/types';
 
@@ -16,6 +17,13 @@ export function SavedItemsGrid(props: Props) {
   const unsaveCourse = useSavedStore((s) => s.unsaveCourse);
   const unsaveGig = useSavedStore((s) => s.unsaveGig);
   const hydrated = useSavedStore((s) => s._hasHydrated);
+  const { toast, showToast } = useToast();
+
+  const handleUnsave = async (id: string, label: string) => {
+    if (type === 'course') void unsaveCourse(id);
+    else void unsaveGig(id);
+    showToast(`${label} dihapus dari simpanan`, 'info');
+  };
 
   if (!hydrated) {
     return (
@@ -60,14 +68,14 @@ export function SavedItemsGrid(props: Props) {
             key={item.id}
             type={type}
             item={item}
-            onUnsave={
-              type === 'course'
-                ? () => unsaveCourse(item.id)
-                : () => unsaveGig(item.id)
+            onUnsave={() =>
+              handleUnsave(item.id, type === 'course' ? 'Kursus' : 'Gig')
             }
           />
         ))}
       </div>
+
+      {toast && <Toast message={toast.message} tone={toast.tone} />}
     </section>
   );
 }

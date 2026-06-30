@@ -4,6 +4,7 @@ import './globals.css';
 import { Header } from '@/components/layout/Header';
 import { JourneyNav } from '@/components/layout/JourneyNav';
 import { Footer } from '@/components/layout/Footer';
+import { SavedHydrator } from '@/components/system/SavedHydrator';
 import { getCurrentUser } from '@/lib/supabase/session';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -25,6 +26,7 @@ export default async function RootLayout({
   const user = await getCurrentUser();
   const headerUser = user
     ? {
+        id: user.id,
         name: user.name,
         initials: user.initials,
         role: user.role,
@@ -38,6 +40,7 @@ export default async function RootLayout({
         <JourneyNav />
         <main>{children}</main>
         <Footer />
+        <SavedHydrator />
       </body>
     </html>
   );

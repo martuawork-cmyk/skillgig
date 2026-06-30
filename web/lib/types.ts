@@ -10,7 +10,9 @@ export type GigCategory =
   | 'data'
   | 'video';
 
-export type ApplicationStatus = 'pending' | 'accepted' | 'rejected';
+export type ApplicationStatus = 'pending' | 'reviewed' | 'accepted' | 'rejected';
+
+export type GigStatus = 'draft' | 'published' | 'expired';
 
 export interface Gig {
   id: string;
@@ -29,6 +31,9 @@ export interface Gig {
   postedAt: string; // ISO
   platform: GigPlatform;
   url: string;
+  /** Lifecycle status controlled by the admin layer. Defaults to 'published'
+   *  for legacy rows that pre-date migration 007. */
+  status: GigStatus;
 }
 
 export type GigPlatform =
@@ -59,6 +64,10 @@ export interface Course {
   createdAt: string; // ISO date
   enrolled: boolean; // mock "currently learning" flag
   url?: string; // optional external link
+  /** 0.00 – 5.00, average rating reported by the platform. */
+  rating: number;
+  /** Admin-controlled flag — featured courses surface on the /learn landing. */
+  featured: boolean;
 }
 
 export type CoursePlatform = 'Udemy' | 'Coursera' | 'Dicoding' | 'YouTube';

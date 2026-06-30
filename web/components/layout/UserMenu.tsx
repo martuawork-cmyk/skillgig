@@ -7,13 +7,14 @@ import { signOut } from '@/lib/supabase/actions';
 import { cn } from '@/lib/utils';
 
 type Props = {
+  userId: string;
   name: string;
   initials: string;
   role: 'client' | 'freelancer';
   email?: string;
 };
 
-export function UserMenu({ name, initials, role, email }: Props) {
+export function UserMenu({ userId, name, initials, role, email }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -77,6 +78,16 @@ export function UserMenu({ name, initials, role, email }: Props) {
           </div>
 
           <ul className="py-1">
+            <li>
+              <Link
+                href={`/profile/${userId}`}
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                👤 Profil Saya
+              </Link>
+            </li>
             <li>
               <Link
                 href="/applications"

@@ -1,84 +1,54 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { NewsletterSkillOption } from '@/lib/supabase/queries';
 
 /**
  * NewsletterSection — homepage hero CTA for email + skill subscription.
  *
- * Behaviour:
- *   - Email + skill dropdown + submit
- *   - Validates email format (basic regex)
- *   - On submit: stores to localStorage (`skillgig.newsletter.v1`) and
- *     transitions to a "sukses" state. No backend wiring for now
- *     (mock-first, as the user asked).
- *   - Persists across reloads (the success badge stays on if already
- *     subscribed, otherwise the form re-renders)
+ * Behaviour (P2-A):
+ *   - Email + skill dropdown sourced from Supabase `skills` table.
+ *     When no skills load (offline / Supabase unreachable) we render a
+ *     minimal "email only" form rather than blocking the entire section.
+ *   - POSTs to /api/subscribe, which validates, dedupes (via UNIQUE on
+ *     email+skill_id), inserts, and fires a welcome email via Resend.
+ *   - Loading / success / error states are explicit so the visitor always
+ *     sees what's happening.
  *
- * The dropdown options are hard-coded for now. Could be wired to a Supabase
- * `skills` table later via getSkills() if needed.
+ * Props: `skills` is hydrated by the server component (page.tsx) — keeping
+ * the data fetch on the server means the dropdown renders instantly with
+ * no client-side waterfall.
  */
 
-const SKILL_OPTIONS = [
-  { value: 'video-editing', label: 'Video Editing',  icon: '🎬' },
-  { value: 'web-dev',       label: 'Web Dev',        icon: '💻' },
-  { value: 'copywriting',   label: 'Copywriting',    icon: '✍️' },
-  { value: 'design',        label: 'Design',         icon: '🎨' },
-  { value: 'data-analysis', label: 'Data Analysis',  icon: '📊' },
-  { value: 'marketing',     label: 'Marketing',      icon: '📈' },
-  { value: 'video-motion',  label: 'Motion / 3D',     icon: '🌀' },
-  { value: 'ai-ml',         label: 'AI / ML',        icon: '🤖' },
-];
+type Skill = NewsletterSkillOption;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const STORAGE_KEY = 'skillgig.newsletter.v1';
-
 type Status = 'idle' | 'submitting' | 'success' | 'error';
 
-type SavedSub = {
-  email: string;
-  skill: string;
-  subscribedAt: number;
-};
+type SubscribeResponse =
+  | { ok: true; alreadySubscribed: boolean; emailSent: boolean }
+  | { ok: false; error: string; message?: string };
 
-function loadSaved(): SavedSub | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed.email === 'string' && typeof parsed.skill === 'string') {
-      return parsed as SavedSub;
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
-function persist(sub: SavedSub) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sub));
-  } catch {
-    /* ignore quota */
-  }
-}
-
-export function NewsletterSection() {
+export function NewsletterSection({ skills }: { skills: Skill[] }) {
   const [email, setEmail] = useState('');
-  const [skill, setSkill] = useState<string>(SKILL_OPTIONS[0].value);
+  const [skill, setSkill] = useState<string>('');
   const [status, setStatus] = useState<Status>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [saved, setSaved] = useState<SavedSub | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
+  const [submittedSkillId, setSubmittedSkillId] = useState<string | null>(null);
 
-  // Read previously-saved sub on mount (client-only)
+  // Pick a sensible default skill once the list hydrates. Don't overwrite
+  // a value the user already chose.
   useEffect(() => {
-    setSaved(loadSaved());
-    setHydrated(true);
-  }, []);
+    if (!skill && skills.length > 0) setSkill(skills[0].id);
+  }, [skill, skills]);
 
-  function onSubmit(e: React.FormEvent) {
+  const submitting = status === 'submitting';
+  const succeeded  = status === 'success';
+  const errored    = status === 'error';
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (status === 'submitting') return;
 
@@ -92,34 +62,44 @@ export function NewsletterSection() {
     setStatus('submitting');
     setErrorMsg(null);
 
-    // Mock submit: persist locally, then transition to success.
-    // (No backend wiring — user said "simpan ke localStorage sementara".)
-    const sub: SavedSub = {
-      email: trimmedEmail,
-      skill,
-      subscribedAt: Date.now(),
-    };
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          email: trimmedEmail,
+          skillId: skill || null,
+        }),
+      });
 
-    // Simulate brief delay for nicer UX
-    setTimeout(() => {
-      persist(sub);
-      setSaved(sub);
+      const data = (await res.json()) as SubscribeResponse;
+
+      if (!res.ok || !data.ok) {
+        const msg = friendlySubscribeError(data);
+        setStatus('error');
+        setErrorMsg(msg);
+        return;
+      }
+
+      setSubmittedEmail(trimmedEmail);
+      setSubmittedSkillId(skill || null);
       setStatus('success');
       setEmail('');
-    }, 400);
-  }
-
-  function onUnsubscribe() {
-    try {
-      localStorage.removeItem(STORAGE_KEY);
     } catch {
-      /* ignore */
+      setStatus('error');
+      setErrorMsg('Gagal terhubung ke server. Periksa koneksi kamu.');
     }
-    setSaved(null);
-    setStatus('idle');
   }
 
-  const selectedSkill = SKILL_OPTIONS.find((s) => s.value === skill);
+  function onResubscribe() {
+    setSubmittedEmail(null);
+    setSubmittedSkillId(null);
+    setStatus('idle');
+    setErrorMsg(null);
+  }
+
+  const submittedSkill =
+    skills.find((s) => s.id === submittedSkillId) ?? null;
 
   return (
     <section
@@ -150,21 +130,15 @@ export function NewsletterSection() {
             </p>
             <ul className="mt-5 space-y-1.5 text-sm text-indigo-100">
               <li className="flex items-center gap-2">
-                <span className="w-5 h-5 grid place-items-center rounded-full bg-emerald-400/30 text-emerald-100 text-[10px] font-bold">
-                  ✓
-                </span>
+                <span className="w-5 h-5 grid place-items-center rounded-full bg-emerald-400/30 text-emerald-100 text-[10px] font-bold">✓</span>
                 Gratis selamanya
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-5 h-5 grid place-items-center rounded-full bg-emerald-400/30 text-emerald-100 text-[10px] font-bold">
-                  ✓
-                </span>
+                <span className="w-5 h-5 grid place-items-center rounded-full bg-emerald-400/30 text-emerald-100 text-[10px] font-bold">✓</span>
                 Berhenti kapan saja
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-5 h-5 grid place-items-center rounded-full bg-emerald-400/30 text-emerald-100 text-[10px] font-bold">
-                  ✓
-                </span>
+                <span className="w-5 h-5 grid place-items-center rounded-full bg-emerald-400/30 text-emerald-100 text-[10px] font-bold">✓</span>
                 Personal sesuai skill kamu
               </li>
             </ul>
@@ -172,8 +146,13 @@ export function NewsletterSection() {
 
           {/* Right: form / success */}
           <div className="lg:col-span-3">
-            {status === 'success' && saved ? (
-              <SuccessState saved={saved} onUnsubscribe={onUnsubscribe} />
+            {succeeded && submittedEmail ? (
+              <SuccessState
+                email={submittedEmail}
+                skillName={submittedSkill?.name ?? null}
+                skillIcon={submittedSkill?.icon ?? null}
+                onResubscribe={onResubscribe}
+              />
             ) : (
               <form
                 onSubmit={onSubmit}
@@ -199,8 +178,8 @@ export function NewsletterSection() {
                         setEmail(e.target.value);
                         if (status === 'error') setStatus('idle');
                       }}
-                      disabled={status === 'submitting'}
-                      aria-invalid={status === 'error'}
+                      disabled={submitting}
+                      aria-invalid={errored}
                       className="w-full px-3.5 py-2.5 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg placeholder:text-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:opacity-60 transition"
                     />
                   </div>
@@ -212,35 +191,25 @@ export function NewsletterSection() {
                     >
                       Skill
                     </label>
-                    <div className="relative">
-                      <select
-                        id="newsletter-skill"
+                    {skills.length > 0 ? (
+                      <SkillSelect
+                        skills={skills}
                         value={skill}
-                        onChange={(e) => setSkill(e.target.value)}
-                        disabled={status === 'submitting'}
-                        className="w-full pl-9 pr-8 py-2.5 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:opacity-60 appearance-none cursor-pointer transition"
-                      >
-                        {SKILL_OPTIONS.map((s) => (
-                          <option key={s.value} value={s.value}>
-                            {s.icon}  {s.label}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base pointer-events-none">
-                        {selectedSkill?.icon}
-                      </span>
-                      <svg
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                        strokeLinecap="round" strokeLinejoin="round" aria-hidden
-                      >
-                        <polyline points="6 9 12 15 18 9" />
-                      </svg>
-                    </div>
+                        onChange={setSkill}
+                        disabled={submitting}
+                      />
+                    ) : (
+                      // Skills list didn't hydrate (offline / no Supabase).
+                      // We still allow email-only opt-in via the API.
+                      <p className="text-xs text-slate-500 bg-slate-50 border border-dashed border-slate-300 rounded-lg px-3 py-2.5">
+                        Daftar skill belum tersedia — kamu tetap bisa
+                        subscribe dengan email saja.
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {status === 'error' && errorMsg && (
+                {errored && errorMsg && (
                   <p
                     role="alert"
                     className="text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2"
@@ -251,18 +220,16 @@ export function NewsletterSection() {
 
                 <button
                   type="submit"
-                  disabled={status === 'submitting'}
+                  disabled={submitting}
                   className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 rounded-lg shadow-soft active:scale-[.98] disabled:opacity-60 transition"
                 >
-                  {status === 'submitting' ? (
+                  {submitting ? (
                     <>
                       <Spinner />
-                      Memproses…
+                      Mengirim…
                     </>
                   ) : (
-                    <>
-                      🚀 Langganan Gratis
-                    </>
+                    <>🚀 Langganan Gratis</>
                   )}
                 </button>
 
@@ -270,16 +237,6 @@ export function NewsletterSection() {
                   Dengan berlangganan, kamu setuju menerima email mingguan dari kami.
                 </p>
               </form>
-            )}
-
-            {/* Hydration: jika user sudah subscribe dari sesi sebelumnya */}
-            {hydrated && status !== 'success' && saved && (
-              <div className="mt-3 text-center">
-                <p className="text-xs text-indigo-100">
-                  Kamu sudah berlangganan sebagai{' '}
-                  <span className="font-semibold">{saved.email}</span>.
-                </p>
-              </div>
             )}
           </div>
         </div>
@@ -290,14 +247,58 @@ export function NewsletterSection() {
 
 /* ---------- helpers ---------- */
 
-function SuccessState({
-  saved,
-  onUnsubscribe,
+function SkillSelect({
+  skills,
+  value,
+  onChange,
+  disabled,
 }: {
-  saved: SavedSub;
-  onUnsubscribe: () => void;
+  skills: Skill[];
+  value: string;
+  onChange: (v: string) => void;
+  disabled: boolean;
 }) {
-  const skillMeta = SKILL_OPTIONS.find((s) => s.value === saved.skill);
+  const selected = skills.find((s) => s.id === value);
+  return (
+    <div className="relative">
+      <select
+        id="newsletter-skill"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className="w-full pl-9 pr-8 py-2.5 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:opacity-60 appearance-none cursor-pointer transition"
+      >
+        {skills.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.icon ? `${s.icon}  ${s.name}` : s.name}
+          </option>
+        ))}
+      </select>
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base pointer-events-none">
+        {selected?.icon ?? '•'}
+      </span>
+      <svg
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round" aria-hidden
+      >
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </div>
+  );
+}
+
+function SuccessState({
+  email,
+  skillName,
+  skillIcon,
+  onResubscribe,
+}: {
+  email: string;
+  skillName: string | null;
+  skillIcon: string | null;
+  onResubscribe: () => void;
+}) {
   return (
     <div
       role="status"
@@ -311,18 +312,26 @@ function SuccessState({
         Berhasil berlangganan!
       </h3>
       <p className="text-sm text-slate-600 max-w-sm mx-auto leading-relaxed">
-        Kami akan mengirim update mingguan tentang{' '}
-        <span className="font-semibold text-slate-900">
-          {skillMeta?.icon} {skillMeta?.label ?? saved.skill}
-        </span>{' '}
-        ke <span className="font-semibold text-slate-900">{saved.email}</span>.
+        Kami akan mengirim update mingguan
+        {skillName ? (
+          <>
+            {' '}tentang{' '}
+            <span className="font-semibold text-slate-900">
+              {skillIcon ? `${skillIcon} ` : ''}{skillName}
+            </span>
+          </>
+        ) : null}
+        {' '}ke <span className="font-semibold text-slate-900">{email}</span>.
+      </p>
+      <p className="text-xs text-slate-500">
+        Cek inbox kamu — kami sudah kirim email konfirmasi.
       </p>
       <button
         type="button"
-        onClick={onUnsubscribe}
+        onClick={onResubscribe}
         className="text-xs text-slate-500 hover:text-rose-600 underline mt-2"
       >
-        Berhenti berlangganan
+        Pakai email lain
       </button>
     </div>
   );
@@ -345,4 +354,14 @@ function Spinner() {
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
   );
+}
+
+function friendlySubscribeError(data: SubscribeResponse): string {
+  if (data.ok) return 'Berhasil.';
+  const errCode = !data.ok ? data.error : 'unknown';
+  const msg = !data.ok ? data.message : '';
+  if (errCode === 'invalid-email')  return msg || 'Format email tidak valid.';
+  if (errCode === 'invalid-skill')  return msg || 'Skill yang dipilih tidak dikenal.';
+  if (errCode === 'network')        return msg || 'Belum terkoneksi ke server. Coba lagi nanti.';
+  return msg || 'Gagal mengirim. Coba lagi nanti.';
 }

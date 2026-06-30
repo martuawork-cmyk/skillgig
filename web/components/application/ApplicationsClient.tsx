@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { FilterPills } from '@/components/ui/FilterPills';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { formatIDR, timeAgo, statusColor, statusLabel } from '@/lib/utils';
+import { timeAgo, statusColor, statusLabel } from '@/lib/utils';
 import type { Application, ApplicationStatus, Gig, User } from '@/lib/types';
 
 type AppSort = 'newest' | 'oldest';
@@ -16,6 +16,7 @@ type AppFilter = ApplicationStatus | 'all';
 const STATUS_PILLS: { value: AppFilter; label: string }[] = [
   { value: 'all',      label: 'Semua' },
   { value: 'pending',  label: 'Pending' },
+  { value: 'reviewed', label: 'Reviewed' },
   { value: 'accepted', label: 'Accepted' },
   { value: 'rejected', label: 'Rejected' },
 ];
@@ -32,6 +33,8 @@ export function ApplicationsClient({
   const [statusFilter, setStatusFilter] = useState<AppFilter>('all');
   const [sort, setSort] = useState<AppSort>('newest');
 
+  // Always pre-sorted by created_at DESC on the server; resort here only when
+  // the user toggles "oldest".
   const filtered = useMemo(() => {
     return initialApps
       .filter((a) => statusFilter === 'all' || a.status === statusFilter)
@@ -107,31 +110,9 @@ export function ApplicationsClient({
                           </Badge>
                         </div>
 
-                        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">
-                              Rate diajukan
-                            </p>
-                            <p className="font-bold text-slate-900">{formatIDR(app.proposedRate)}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">
-                              Durasi
-                            </p>
-                            <p className="font-bold text-slate-900">{app.proposedDurationWeeks} minggu</p>
-                          </div>
-                          <div className="col-span-2 sm:col-span-1">
-                            <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">
-                              Klien
-                            </p>
-                            <p className="font-bold text-slate-900 truncate">
-                              {client?.name}
-                            </p>
-                          </div>
-                        </div>
-
-                        <p className="text-sm text-slate-600 mt-3 line-clamp-2">
-                          <span className="font-semibold">Cover:</span> {app.coverLetter}
+                        <p className="text-sm text-slate-600 mt-3 line-clamp-3 whitespace-pre-line">
+                          <span className="font-semibold text-slate-700">Cover letter:</span>{' '}
+                          {app.coverLetter}
                         </p>
                       </div>
                     </div>

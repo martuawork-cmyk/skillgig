@@ -23,8 +23,9 @@ export function LoginForm() {
 
     const result: AuthResult = await signInWithPassword(email, password);
     if (result.ok) {
+      // Redirect to next URL if explicitly set, otherwise to user's profile
       // Hard navigation so server components re-fetch with the new cookie
-      window.location.href = nextUrl;
+      window.location.href = nextUrl !== '/' ? nextUrl : `/profile/${result.userId}`;
     } else {
       setErrorMsg(result.message ?? 'Gagal masuk. Coba lagi.');
       setSubmitting(false);

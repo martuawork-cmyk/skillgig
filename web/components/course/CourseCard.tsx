@@ -2,6 +2,7 @@
 
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { useToast, Toast } from '@/components/ui/Toast';
 import { COURSE_PLATFORMS, type Course } from '@/lib/types';
 import { formatIDR, formatCompact, levelColor, levelLabel, cn } from '@/lib/utils';
 import { useSavedStore } from '@/lib/store/savedStore';
@@ -14,6 +15,21 @@ export function CourseCard({ course }: Props) {
   const isFree = course.price === 0;
   const saved = useSavedStore((s) => s.isCourseSaved(course.id));
   const toggleSaveCourse = useSavedStore((s) => s.toggleSaveCourse);
+  const { toast, showToast } = useToast();
+
+  const handleToggle = async () => {
+    const wasSaved = saved;
+    void toggleSaveCourse({
+      id: course.id,
+      title: course.titleId,
+      platform: course.platform,
+      thumbnail: course.thumbnail,
+    });
+    showToast(
+      wasSaved ? 'Bookmark dihapus' : 'Kursus tersimpan',
+      wasSaved ? 'info' : 'success',
+    );
+  };
 
   return (
     <Card className="h-full hover:border-indigo-300 hover:shadow-md transition flex flex-col">
@@ -69,19 +85,11 @@ export function CourseCard({ course }: Props) {
               </span>
             )}
           </div>
-          <SaveButton
-            saved={saved}
-            onClick={() =>
-              toggleSaveCourse({
-                id: course.id,
-                title: course.titleId,
-                platform: course.platform,
-                thumbnail: course.thumbnail,
-              })
-            }
-          />
+          <SaveButton saved={saved} onClick={handleToggle} />
         </div>
       </div>
+
+      {toast && <Toast message={toast.message} tone={toast.tone} />}
     </Card>
   );
 }
