@@ -101,10 +101,11 @@ export function ApplyForm({
 
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label htmlFor="cover-letter" className="block text-xs font-semibold text-slate-700 mb-1">
               Cover letter
             </label>
             <textarea
+              id="cover-letter"
               value={letter}
               onChange={(e) => setLetter(e.target.value)}
               rows={6}
@@ -113,7 +114,7 @@ export function ApplyForm({
             />
             <p
               className={`text-[10px] mt-1 ${
-                tooShort ? 'text-rose-500' : 'text-slate-400'
+                tooShort ? 'text-rose-500' : 'text-slate-500'
               }`}
             >
               {letter.trim().length}/{COVER_LETTER_MIN} karakter
@@ -125,7 +126,7 @@ export function ApplyForm({
             {submitting ? 'Mengirim…' : 'Kirim Lamaran'}
           </Button>
 
-          <p className="text-[10px] text-slate-400 text-center">
+          <p className="text-[10px] text-slate-500 text-center">
             Gig ID: {gigId}
           </p>
         </form>

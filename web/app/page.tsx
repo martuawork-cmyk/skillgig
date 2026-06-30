@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { Card, CardBody } from '@/components/ui/Card';
 import { ButtonLink } from '@/components/ui/Button';
 import { GigCard } from '@/components/gig/GigCard';
@@ -6,6 +7,7 @@ import { CourseCard } from '@/components/course/CourseCard';
 import { NewsletterSection } from '@/components/newsletter/NewsletterSection';
 import { getCourses, getGigs, getHomepageStats, getSkillsForNewsletter, isSupabaseConfigured } from '@/lib/supabase/queries';
 import { formatCompact, formatIDR } from '@/lib/utils';
+import { buildMetadata } from '@/lib/seo';
 
 const JOURNEY = [
   { icon: '📚', label: 'Learn',  desc: 'Pelajari skill digital dari kursus terstruktur', href: '/learn' },
@@ -16,6 +18,13 @@ const JOURNEY = [
 ];
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = buildMetadata({
+  title: 'SkillGig.id — Belajar Skill Digital & Cari Freelance Indonesia',
+  description:
+    'Platform Indonesia yang menghubungkan perjalanan belajar skill digital, membangun portofolio, menemukan gig, melamar, dan menghasilkan — semuanya untuk freelancer Indonesia.',
+  path: '/',
+});
 
 export default async function Home() {
   // Featured items — fetched at request time so changes in Supabase appear

@@ -103,6 +103,7 @@ export type CourseRow = {
   enrolled: boolean;
   created_at: string;
   featured: boolean;
+  affiliate_url: string | null;
 };
 
 export type GigRow = {
@@ -176,6 +177,11 @@ export function mapCourseRow(r: CourseRow): Course {
     enrolled: r.enrolled,
     createdAt: r.created_at,
     featured: Boolean(r.featured),
+    affiliateUrl: r.affiliate_url ?? null,
+    // Lifetime click count is merged onto the mapped Course by the admin
+    // listing query (adminListCourses). The public RSC read never needs it,
+    // so the mapper itself defaults to 0.
+    affiliateClicks: 0,
   };
 }
 

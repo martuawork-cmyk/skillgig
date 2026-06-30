@@ -17,6 +17,13 @@ export const metadata = {
 export default async function AdminCoursesPage() {
   const courses = await adminListCourses();
 
+  // Total klik affiliate = sum across courses. Used as a KPI chip in the
+  // header so the admin gets an at-a-glance view of monetisation traction.
+  const totalClicks = courses.reduce(
+    (sum, c) => sum + (c.affiliateClicks ?? 0),
+    0,
+  );
+
   return (
     <div className="space-y-6">
       <header className="flex items-end justify-between gap-4 flex-wrap">
@@ -25,8 +32,8 @@ export default async function AdminCoursesPage() {
             Kelola Kursus
           </h1>
           <p className="text-sm text-slate-600 mt-1">
-            Tambah, edit, hapus kursus dan toggle <em>featured</em> untuk
-            homepage /learn.
+            Tambah, edit, hapus kursus, toggle <em>featured</em>, dan atur URL
+            affiliate (P3-C).
           </p>
         </div>
         <div className="text-xs text-slate-500">
@@ -34,7 +41,9 @@ export default async function AdminCoursesPage() {
           Featured:{' '}
           <span className="font-bold text-slate-900">
             {courses.filter((c) => c.featured).length}
-          </span>
+          </span>{' '}
+          · Klik affiliate:{' '}
+          <span className="font-bold text-slate-900">{totalClicks}</span>
         </div>
       </header>
 
@@ -63,12 +72,15 @@ export default async function AdminCoursesPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
+                <caption className="sr-only">Daftar semua kursus beserta platform, kategori, harga, dan status affiliate</caption>
                 <thead>
                   <tr className="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-100">
                     <th className="px-5 py-3 font-semibold">Judul</th>
                     <th className="px-5 py-3 font-semibold">Platform</th>
                     <th className="px-5 py-3 font-semibold">Kategori</th>
                     <th className="px-5 py-3 font-semibold">Harga</th>
+                    <th className="px-5 py-3 font-semibold">Affiliate</th>
+                    <th className="px-5 py-3 font-semibold">Klik</th>
                     <th className="px-5 py-3 font-semibold">Featured</th>
                     <th className="px-5 py-3 font-semibold text-right">Aksi</th>
                   </tr>
@@ -99,6 +111,16 @@ export default async function AdminCoursesPage() {
                         ) : (
                           formatIDR(course.price)
                         )}
+                      </td>
+                      <td className="px-5 py-3">
+                        {course.affiliateUrl ? (
+                          <Badge tone="amber">Aktif</Badge>
+                        ) : (
+                          <Badge tone="slate">—</Badge>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-slate-700 whitespace-nowrap tabular-nums">
+                        {(course.affiliateClicks ?? 0).toLocaleString('id-ID')}
                       </td>
                       <td className="px-5 py-3">
                         <CourseFeaturedToggle

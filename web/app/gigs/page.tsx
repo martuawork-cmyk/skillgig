@@ -1,8 +1,17 @@
+import type { Metadata } from 'next';
 import { GigsClient } from '@/components/gig/GigsClient';
 import { getGigs, isSupabaseConfigured } from '@/lib/supabase/queries';
 import { ErrorState } from '@/components/feedback/ErrorState';
+import { buildMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = buildMetadata({
+  title: 'Lowongan Freelance Indonesia | SkillGig.id',
+  description:
+    'Temukan lowongan freelance terbaru dari klien Indonesia. Filter berdasarkan kategori, level, dan budget — langsung lamar dan mulai menghasilkan.',
+  path: '/gigs',
+});
 
 export default async function GigsPage() {
   if (!isSupabaseConfigured()) {

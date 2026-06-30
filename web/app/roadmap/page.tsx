@@ -1,10 +1,13 @@
+import type { Metadata } from 'next';
 import { RoadmapExplorer } from '@/components/roadmap/RoadmapExplorer';
+import { buildMetadata } from '@/lib/seo';
 
-export const metadata = {
-  title: 'Roadmap Explorer — SkillGig.id',
+export const metadata: Metadata = buildMetadata({
+  title: 'Roadmap Karier Freelance Indonesia | SkillGig.id',
   description:
-    'Lihat roadmap step-by-step untuk belajar skill baru: skill, kursus, gig, dan estimasi pendapatan.',
-};
+    'Lihat roadmap step-by-step untuk setiap skill digital: kursus rekomendasi, gig terkait, dan estimasi pendapatan di pasar freelance Indonesia.',
+  path: '/roadmap',
+});
 
 export default function RoadmapPage() {
   return (

@@ -50,7 +50,7 @@ export function RoadmapStep({ index, totalSteps, icon, title, kind, children }: 
           <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded-full', accent.chip)}>
             {accent.label}
           </span>
-          <span className="text-[10px] text-slate-400 font-semibold">{index}/{totalSteps}</span>
+          <span className="text-[10px] text-slate-500 font-semibold">{index}/{totalSteps}</span>
         </div>
         <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-2 leading-snug">
           {title}

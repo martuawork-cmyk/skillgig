@@ -78,7 +78,7 @@ export function GigCard({ gig }: Props) {
 
             <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">
+                <p className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
                   Budget
                 </p>
                 <p className="font-bold text-slate-900 text-sm">
@@ -86,7 +86,7 @@ export function GigCard({ gig }: Props) {
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">
+                <p className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
                   {gig.durationWeeks}w · {gig.applicantsCount} applicants
                 </p>
                 <p className="text-xs text-slate-500">{timeAgo(gig.postedAt)}</p>

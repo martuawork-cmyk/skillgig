@@ -169,9 +169,9 @@ function EmptyPickState() {
       <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 grid place-items-center text-3xl mb-4">
         🗺️
       </div>
-      <h3 className="text-lg font-bold text-slate-900 mb-1">
+      <h2 className="text-lg font-bold text-slate-900 mb-1">
         Pilih skill untuk lihat roadmap
-      </h3>
+      </h2>
       <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
         Dari &ldquo;belum bisa apa-apa&rdquo; sampai &ldquo;bisa menghasilkan&rdquo; &mdash;
         kursus, gig, dan estimasi pendapatan berdasarkan data Supabase.
@@ -192,9 +192,9 @@ function EmptyDataState({
       <div className="mx-auto w-14 h-14 rounded-2xl bg-slate-100 grid place-items-center text-2xl mb-3">
         📭
       </div>
-      <h3 className="text-base font-bold text-slate-900 mb-1">
+      <h2 className="text-base font-bold text-slate-900 mb-1">
         Belum ada data untuk &ldquo;{skillName}&rdquo;
-      </h3>
+      </h2>
       <p className="text-sm text-slate-500 max-w-sm mx-auto">
         Belum ada kursus maupun gig published di kategori ini. Coba skill lain.
       </p>
@@ -220,9 +220,9 @@ function ErrorState({
       <div className="mx-auto w-14 h-14 rounded-2xl bg-rose-100 grid place-items-center text-2xl mb-3">
         ⚠️
       </div>
-      <h3 className="text-base font-bold text-slate-900 mb-1">
+      <h2 className="text-base font-bold text-slate-900 mb-1">
         Gagal memuat roadmap
-      </h3>
+      </h2>
       <p className="text-sm text-slate-500 max-w-sm mx-auto">{message}</p>
       <button
         onClick={onRetry}

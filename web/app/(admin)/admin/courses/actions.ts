@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import {
   adminCreateCourse,
   adminDeleteCourse,
@@ -48,6 +48,17 @@ function toCheckbox(v: unknown): boolean {
   return v === 'on' || v === 'true' || v === true;
 }
 
+function toOptionalUrl(v: unknown): string | null | undefined {
+  // Preserves the three states the server-queries expects:
+  //   undefined → field not present, leave the column alone
+  //   ''        → admin explicitly cleared the link
+  //   string    → trimmed value
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (typeof v !== 'string') return undefined;
+  return v.trim();
+}
+
 export async function createCourseAction(formData: FormData): Promise<ActionResult> {
   const title = String(formData.get('title') ?? '').trim();
   const url = String(formData.get('url') ?? '').trim();
@@ -68,9 +79,11 @@ export async function createCourseAction(formData: FormData): Promise<ActionResu
       level: pickEnum(formData.get('level'), SKILL_LEVELS, 'beginner'),
       durationHours: toPositiveInt(formData.get('durationHours')),
       featured: toCheckbox(formData.get('featured')),
+      affiliateUrl: toOptionalUrl(formData.get('affiliateUrl')),
     });
     revalidatePath('/admin');
     revalidatePath('/admin/courses');
+    revalidateTag('courses');
     return { ok: true, id: course.id };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Gagal membuat kursus.' };
@@ -100,10 +113,12 @@ export async function updateCourseAction(
       level: pickEnum(formData.get('level'), SKILL_LEVELS, 'beginner'),
       durationHours: toPositiveInt(formData.get('durationHours')),
       enrolled: toCheckbox(formData.get('enrolled')),
+      affiliateUrl: toOptionalUrl(formData.get('affiliateUrl')),
     });
     revalidatePath('/admin');
     revalidatePath('/admin/courses');
     revalidatePath(`/admin/courses/${id}`);
+    revalidateTag('courses');
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Gagal update kursus.' };
@@ -117,10 +132,12 @@ export async function toggleCourseFeaturedAction(
   await adminToggleCourseFeatured(id, featured);
   revalidatePath('/admin');
   revalidatePath('/admin/courses');
+  revalidateTag('courses');
 }
 
 export async function deleteCourseAction(id: string): Promise<void> {
   await adminDeleteCourse(id);
   revalidatePath('/admin');
   revalidatePath('/admin/courses');
+  revalidateTag('courses');
 }

@@ -61,7 +61,7 @@ export function JourneyNav() {
                     >
                       {step.label}
                     </span>
-                    <span className="text-[10px] text-slate-400 truncate">{step.icon}</span>
+                    <span className="text-[10px] text-slate-500 truncate">{step.icon}</span>
                   </span>
                 </Link>
               </li>

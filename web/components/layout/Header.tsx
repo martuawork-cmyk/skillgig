@@ -56,12 +56,15 @@ export function Header({ user }: Props) {
             <span className="text-white font-extrabold text-sm">SG</span>
           </div>
           <div className="leading-tight">
-            <h1 className="font-extrabold text-slate-900 tracking-tight text-base">
+            {/* Brand wordmark — a <span>, not an <h1>: every page renders its
+                own <h1> for the page title, so the logo must not introduce a
+                second top-level heading (WCAG: one h1 per page). */}
+            <span className="block font-extrabold text-slate-900 tracking-tight text-base">
               SkillGig<span className="text-indigo-600">.id</span>
-            </h1>
-            <p className="text-[10px] text-slate-500 -mt-0.5 hidden sm:block">
+            </span>
+            <span className="block text-[10px] text-slate-500 -mt-0.5 hidden sm:block">
               Learn · Build · Earn
-            </p>
+            </span>
           </div>
         </Link>
 

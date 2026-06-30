@@ -1,8 +1,17 @@
+import type { Metadata } from 'next';
 import { LearnClient } from '@/components/course/LearnClient';
 import { getCourses, isSupabaseConfigured } from '@/lib/supabase/queries';
 import { ErrorState } from '@/components/feedback/ErrorState';
+import { buildMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = buildMetadata({
+  title: 'Kursus Digital Terbaik Indonesia | SkillGig.id',
+  description:
+    'Katalog kursus digital pilihan dari platform favorit: web dev, design, marketing, data, dan video. Filter berdasarkan kategori dan mulai belajar skill digital terstruktur.',
+  path: '/learn',
+});
 
 export default async function LearnPage() {
   if (!isSupabaseConfigured()) {

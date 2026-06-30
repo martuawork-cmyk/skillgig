@@ -4,12 +4,14 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { migrateOldKeys } from './migration';
 import { subscribeSkillAlert } from '@/lib/supabase/actions';
-import {
-  getSavedItems,
-  saveItem as sbSaveItem,
-  unsaveItem as sbUnsaveItem,
-  type SavedItemRow,
-} from '@/lib/supabase/save-queries';
+import type { SavedItemRow } from '@/lib/supabase/save-queries';
+
+// P4-A perf: the save layer drags @supabase/supabase-js (~80 kB) into the
+// bundle. Load it lazily so that weight ships in a deferred chunk instead of
+// every page's First Load JS — it only resolves when a save / unsave / hydrate
+// action actually runs. Semantics are unchanged; the module is fetched on
+// demand and the dynamic import is cached after first use.
+const loadSaveQueries = () => import('@/lib/supabase/save-queries');
 
 /**
  * SkillGig — global save store.
@@ -108,6 +110,7 @@ export const useSavedStore = create<State>()(
         if (get()._serverSynced) return;
         if (typeof window === 'undefined') return;
         try {
+          const { getSavedItems } = await loadSaveQueries();
           const rows = await getSavedItems();
           if (!Array.isArray(rows)) return;
 
@@ -151,6 +154,7 @@ export const useSavedStore = create<State>()(
         // a fresh migration of the table picks up saves made previously.
         const state = get();
         if (!state._hasHydrated) return;
+        const { saveItem: sbSaveItem } = await loadSaveQueries();
         const tasks: Promise<unknown>[] = [];
         for (const c of state.savedCourses) {
           tasks.push(sbSaveItem('course', c.id));
@@ -168,6 +172,7 @@ export const useSavedStore = create<State>()(
         set((s) => ({
           savedCourses: [...s.savedCourses, { ...c, savedAt: Date.now() }],
         }));
+        const { saveItem: sbSaveItem } = await loadSaveQueries();
         const res = await sbSaveItem('course', c.id);
         if (!res.ok) {
           // Roll back on failure so the optimistic state doesn't lie.
@@ -177,6 +182,7 @@ export const useSavedStore = create<State>()(
       unsaveCourse: async (id) => {
         const prev = get().savedCourses;
         set((s) => ({ savedCourses: s.savedCourses.filter((x) => x.id !== id) }));
+        const { unsaveItem: sbUnsaveItem } = await loadSaveQueries();
         const res = await sbUnsaveItem('course', id);
         if (!res.ok) {
           // Roll back so the user can retry.
@@ -195,6 +201,7 @@ export const useSavedStore = create<State>()(
         set((s) => ({
           savedGigs: [...s.savedGigs, { ...g, savedAt: Date.now() }],
         }));
+        const { saveItem: sbSaveItem } = await loadSaveQueries();
         const res = await sbSaveItem('gig', g.id);
         if (!res.ok) {
           set((s) => ({ savedGigs: s.savedGigs.filter((x) => x.id !== g.id) }));
@@ -203,6 +210,7 @@ export const useSavedStore = create<State>()(
       unsaveGig: async (id) => {
         const prev = get().savedGigs;
         set((s) => ({ savedGigs: s.savedGigs.filter((x) => x.id !== id) }));
+        const { unsaveItem: sbUnsaveItem } = await loadSaveQueries();
         const res = await sbUnsaveItem('gig', id);
         if (!res.ok) {
           set({ savedGigs: prev });

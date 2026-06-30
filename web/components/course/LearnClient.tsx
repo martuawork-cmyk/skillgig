@@ -56,6 +56,11 @@ export function LearnClient({ initialCourses }: { initialCourses: Course[] }) {
         resultCount={filtered.length}
       />
 
+      {/* Section heading for the results grid — keeps heading order
+          h1 → h2 → h3 (CourseCard titles are h3). Visually hidden, announced
+          to assistive tech. */}
+      <h2 className="sr-only">Daftar kursus</h2>
+
       {/* Grid */}
       {filtered.length === 0 ? (
         <EmptyState

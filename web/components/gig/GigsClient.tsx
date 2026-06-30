@@ -9,6 +9,7 @@ import { GigCard } from '@/components/gig/GigCard';
 import { CATEGORIES, LEVELS, type GigCategory, type SkillLevel } from '@/lib/types';
 import type { Gig } from '@/lib/types';
 import { useSavedStore } from '@/lib/store/savedStore';
+import { cn } from '@/lib/utils';
 
 type Sort = 'newest' | 'budget-high' | 'budget-low' | 'applicants';
 
@@ -18,6 +19,9 @@ export function GigsClient({ initialGigs }: { initialGigs: Gig[] }) {
   const [level, setLevel] = useState<SkillLevel | 'all'>('all');
   const [sort, setSort] = useState<Sort>('newest');
   const [hydrated, setHydrated] = useState(false);
+  // On mobile the filter sidebar collapses into an accordion; on `lg+` it is
+  // always expanded (the toggle button is hidden and the panel is shown).
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const savedCount = useSavedStore((s) => s.savedGigs.length);
   const storeHydrated = useSavedStore((s) => s._hasHydrated);
 
@@ -52,6 +56,10 @@ export function GigsClient({ initialGigs }: { initialGigs: Gig[] }) {
   function reset() {
     setQ(''); setCat('all'); setLevel('all'); setSort('newest');
   }
+
+  // How many non-default filters are active — shown as a badge on the mobile
+  // toggle so users know filters are applied while the panel is collapsed.
+  const activeCount = (cat !== 'all' ? 1 : 0) + (level !== 'all' ? 1 : 0);
 
   // Stats
   const totalGigs = initialGigs.length;
@@ -91,8 +99,10 @@ export function GigsClient({ initialGigs }: { initialGigs: Gig[] }) {
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             <input
+              type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
+              aria-label="Cari gigs berdasarkan judul, skill, atau deskripsi"
               placeholder="Cari gigs berdasarkan judul, skill, atau deskripsi..."
               className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
             />
@@ -100,6 +110,7 @@ export function GigsClient({ initialGigs }: { initialGigs: Gig[] }) {
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as Sort)}
+            aria-label="Urutkan gigs"
             className="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
           >
             <option value="newest">Terbaru</option>
@@ -111,12 +122,43 @@ export function GigsClient({ initialGigs }: { initialGigs: Gig[] }) {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Filters sidebar */}
+        {/* Filters sidebar — collapses into an accordion below `lg` */}
         <aside className="lg:col-span-1 space-y-4">
-          <Card>
+          {/* Mobile accordion toggle (hidden on desktop) */}
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((v) => !v)}
+            aria-expanded={filtersOpen}
+            aria-controls="gig-filters-panel"
+            className="lg:hidden w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl shadow-soft transition hover:border-indigo-300"
+          >
+            <span className="flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
+              </svg>
+              Filter
+              {activeCount > 0 && (
+                <span className="inline-grid place-items-center min-w-[1.25rem] h-5 px-1 text-[11px] font-bold text-white bg-indigo-600 rounded-full">
+                  {activeCount}
+                </span>
+              )}
+            </span>
+            <svg
+              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden
+              className={cn('transition-transform', filtersOpen && 'rotate-180')}
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+
+          {/* Panel: hidden when collapsed on mobile, always visible on `lg+` */}
+          <Card
+            id="gig-filters-panel"
+            className={cn(!filtersOpen && 'hidden lg:block')}
+          >
             <CardBody className="space-y-5">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 mb-2">Kategori</h3>
+                <h2 className="text-sm font-bold text-slate-900 mb-2">Kategori</h2>
                 <FilterPills<GigCategory | 'all'>
                   items={[
                     { value: 'all', label: 'Semua' },
@@ -130,7 +172,7 @@ export function GigsClient({ initialGigs }: { initialGigs: Gig[] }) {
               </div>
 
               <div className="pt-4 border-t border-slate-100">
-                <h3 className="text-sm font-bold text-slate-900 mb-2">Level</h3>
+                <h2 className="text-sm font-bold text-slate-900 mb-2">Level</h2>
                 <FilterPills<SkillLevel | 'all'>
                   items={[
                     { value: 'all', label: 'Semua level' },
@@ -176,7 +218,7 @@ export function GigsClient({ initialGigs }: { initialGigs: Gig[] }) {
               }
             />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filtered.map((g) => (
                 <GigCard
                   key={g.id}

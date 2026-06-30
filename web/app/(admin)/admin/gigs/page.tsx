@@ -83,6 +83,7 @@ export default async function AdminGigsPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
+                <caption className="sr-only">Daftar semua gig beserta kategori, budget, status, dan jumlah pelamar</caption>
                 <thead>
                   <tr className="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-100">
                     <th className="px-5 py-3 font-semibold">Judul</th>

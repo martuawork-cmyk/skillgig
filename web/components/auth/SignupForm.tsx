@@ -103,7 +103,7 @@ export function SignupForm() {
 
           <div>
             <label htmlFor="su-password" className="block text-xs font-semibold text-slate-700 mb-1">
-              Password <span className="text-slate-400 font-normal">(min. 6 karakter)</span>
+              Password <span className="text-slate-500 font-normal">(min. 6 karakter)</span>
             </label>
             <input
               id="su-password"

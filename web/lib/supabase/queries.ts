@@ -1,6 +1,8 @@
 import 'server-only';
 
-import { createClient } from './server';
+import { unstable_cache } from 'next/cache';
+
+import { createClient, createPublicClient } from './server';
 import { isSupabaseConfigured as _isConfigured } from '@/components/feedback/ErrorState';
 import {
   mapCourseRow,
@@ -9,6 +11,7 @@ import {
   mapUserRow,
   mapApplicationRow,
   asGigCategory,
+  asSkillLevel,
   type CourseRow,
   type GigRow,
   type SkillRow,
@@ -74,17 +77,46 @@ async function safeQuery<T>(
   }
 }
 
-export async function getCourses(): Promise<Course[]> {
-  return safeQuery('getCourses', async () => {
-    const sb = await createClient();
-    const { data, error } = await sb
-      .from('courses')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data ?? []).map(mapCourseRow);
-  }, []);
+/**
+ * P4-A perf: wrap a public, auth-free catalog read in Next's data cache so the
+ * Supabase round-trip is skipped for up to 1h. The whole app renders
+ * dynamically (the root layout reads the session cookie to render the header's
+ * auth state), so route-level `revalidate` / ISR can't apply here — caching at
+ * the data layer with `unstable_cache` is the correct lever for p95.
+ *
+ * Admin mutations bust these entries immediately via `revalidateTag(...)` in
+ * the server actions (see app/(admin)/.../actions.ts). Keep this helper for
+ * auth-free catalog reads ONLY — anything that depends on the signed-in user
+ * must stay uncached.
+ *
+ * CRITICAL: the wrapped function MUST talk to Supabase via `createPublicClient()`
+ * (cookie-free), never `createClient()`. `createClient()` calls `cookies()`,
+ * which is a dynamic data source and throws "Accessing Dynamic data sources
+ * inside a cache scope is not supported" when invoked from inside
+ * `unstable_cache` — the query then silently fails and returns its fallback.
+ */
+function cached<Args extends unknown[], R>(
+  fn: (...args: Args) => Promise<R>,
+  keyParts: string[],
+  tags: string[],
+) {
+  return unstable_cache(fn, keyParts, { revalidate: 3600, tags });
 }
+
+export const getCourses = cached(
+  async (): Promise<Course[]> =>
+    safeQuery('getCourses', async () => {
+      const sb = createPublicClient();
+      const { data, error } = await sb
+        .from('courses')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(mapCourseRow);
+    }, []),
+  ['getCourses'],
+  ['courses'],
+);
 
 export async function getCourse(id: string): Promise<Course | null> {
   return safeQuery('getCourse', async () => {
@@ -99,17 +131,20 @@ export async function getCourse(id: string): Promise<Course | null> {
   }, null);
 }
 
-export async function getGigs(): Promise<Gig[]> {
-  return safeQuery('getGigs', async () => {
-    const sb = await createClient();
-    const { data, error } = await sb
-      .from('gigs')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data ?? []).map(mapGigRow);
-  }, []);
-}
+export const getGigs = cached(
+  async (): Promise<Gig[]> =>
+    safeQuery('getGigs', async () => {
+      const sb = createPublicClient();
+      const { data, error } = await sb
+        .from('gigs')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(mapGigRow);
+    }, []),
+  ['getGigs'],
+  ['gigs'],
+);
 
 export async function getGig(id: string): Promise<Gig | null> {
   return safeQuery('getGig', async () => {
@@ -138,35 +173,235 @@ export async function getUser(id: string): Promise<User | null> {
 }
 
 export async function getUserSkills(): Promise<Skill[]> {
-  // Note: skills table doesn't carry progress yet (no per-user state). All
-  // skills get a baseline progress derived from a hash so the UI has variety.
+  // P3-B: skills now come from the signed-in user's bag in `user_skills`
+  // (joined with the public `skills` catalog). Returns [] when the visitor
+  // is anonymous or the DB isn't seeded yet — the page renders an EmptyState
+  // in that case.
   return safeQuery('getUserSkills', async () => {
     const sb = await createClient();
+    const { data: auth } = await sb.auth.getUser();
+    if (!auth?.user) return [];
+
     const { data, error } = await sb
-      .from('skills')
-      .select('*')
-      .eq('recommended', false)
-      .order('name');
+      .from('user_skills')
+      .select('id, level, created_at, skill:skills(id, name, category, icon, recommended)')
+      .eq('user_id', auth.user.id)
+      .order('created_at', { ascending: false });
     if (error) throw error;
-    const rows = (data ?? []) as SkillRow[];
-    return rows.map((r, i) => ({
-      ...mapSkillRow(r),
-      progress: deriveProgress(r.id, i, 20, 90),
-    }));
+
+    type Row = {
+      id: string;
+      level: string;
+      created_at: string;
+      skill: SkillRow | SkillRow[] | null;
+    };
+    const rows = (data ?? []) as Row[];
+    return rows
+      .map((r) => {
+        const s = Array.isArray(r.skill) ? r.skill[0] : r.skill;
+        if (!s) return null;
+        return {
+          ...mapSkillRow(s),
+          level: asSkillLevel(r.level),
+          // Bag rows start at 0 — progress is filled in by the per-skill
+          // aggregator on the page. Keeping it 0 here means SkillProgressBar
+          // renders cleanly when the aggregate isn't supplied yet.
+          progress: 0,
+        } as Skill;
+      })
+      .filter((s): s is Skill => s !== null);
   }, []);
 }
 
-export async function getRecommendedSkills(): Promise<Skill[]> {
-  return safeQuery('getRecommendedSkills', async () => {
+export const getRecommendedSkills = cached(
+  async (): Promise<Skill[]> =>
+    safeQuery('getRecommendedSkills', async () => {
+      const sb = createPublicClient();
+      const { data, error } = await sb
+        .from('skills')
+        .select('*')
+        .eq('recommended', true)
+        .order('name');
+      if (error) throw error;
+      return (data ?? []).map((r) => mapSkillRow({ ...(r as SkillRow), progress: 0 }));
+    }, []),
+  ['getRecommendedSkills'],
+  ['skills'],
+);
+
+/**
+ * Full skills catalog — backs the "Tambah Skill" grid on /skills.
+ * Returns the lightweight (id, name, category, icon) shape so the grid
+ * doesn't pull unused columns for every catalog row.
+ */
+export interface CatalogSkill {
+  id: string;
+  name: string;
+  category: GigCategory;
+  icon: string | null;
+}
+
+export const getAllSkills = cached(
+  async (): Promise<CatalogSkill[]> =>
+    safeQuery('getAllSkills', async () => {
+      const sb = createPublicClient();
+      const { data, error } = await sb
+        .from('skills')
+        .select('id, name, category, icon')
+        .order('name');
+      if (error) throw error;
+      return (data ?? []).map((r) => ({
+        id: r.id,
+        name: r.name,
+        category: asGigCategory(r.category),
+        icon: r.icon,
+      }));
+    }, []),
+  ['getAllSkills'],
+  ['skills'],
+);
+
+/**
+ * Per-skill progress aggregator used by the "Progress per Skill" section
+ * on /skills.
+ *
+ * For each of the user's skills we count:
+ *   - savedCourses:   how many saved courses teach this skill
+ *   - appliedGigs:    how many gigs the user has applied to that require it
+ *
+ * The `progress` value is a 0-100 score derived from the two counts so the
+ * existing SkillProgressBar renders without change:
+ *   - 1 saved course = +30 (caps at 60)
+ *   - 1 application  = +15 (caps at 40 — total caps at 100)
+ *
+ * Returns a Map keyed by skill_id so callers can do O(1) lookups without
+ * re-walking the array per skill.
+ */
+export interface SkillProgressEntry {
+  skillId: string;
+  savedCourses: number;
+  appliedGigs: number;
+  progress: number;
+}
+
+export async function getSkillProgressForUser(
+  skillIds: string[],
+): Promise<Map<string, SkillProgressEntry>> {
+  const out = new Map<string, SkillProgressEntry>();
+  if (skillIds.length === 0) return out;
+
+  return safeQuery('getSkillProgressForUser', async () => {
     const sb = await createClient();
-    const { data, error } = await sb
-      .from('skills')
-      .select('*')
-      .eq('recommended', true)
-      .order('name');
-    if (error) throw error;
-    return (data ?? []).map((r) => mapSkillRow({ ...(r as SkillRow), progress: 0 }));
-  }, []);
+    const { data: auth } = await sb.auth.getUser();
+    if (!auth?.user) return out;
+    const userId = auth.user.id;
+
+    // Fetch saved courses + applications once; do the matching in JS.
+    // The lists are bounded by the user's activity so this stays cheap.
+    const [coursesRes, appsRes] = await Promise.all([
+      sb
+        .from('saved_items')
+        .select('item_type, item_id')
+        .eq('user_id', userId)
+        .eq('item_type', 'course'),
+      sb
+        .from('applications')
+        .select('gig_id, gigs(skills)')
+        .or(`user_id.eq.${userId},freelancer_id.eq.${userId}`),
+    ]);
+    if (coursesRes.error) throw coursesRes.error;
+    if (appsRes.error) throw appsRes.error;
+
+    const skillSet = new Set(skillIds);
+    const courseIds = (coursesRes.data ?? [])
+      .map((r) => r.item_id)
+      .filter(Boolean);
+
+    // Look up the skills[] array for each saved course so we can match by name
+    // (skills.id is a uuid; courses.skills stores names).
+    let courseNameById = new Map<string, string[]>();
+    if (courseIds.length > 0) {
+      const { data: courseRows, error: coursesErr } = await sb
+        .from('courses')
+        .select('id, skills')
+        .in('id', courseIds);
+      if (coursesErr) throw coursesErr;
+      courseNameById = new Map(
+        (courseRows ?? []).map((c: { id: string; skills: string[] | null }) => [
+          c.id,
+          c.skills ?? [],
+        ]),
+      );
+    }
+
+    // Resolve skill name -> id once for the catalog rows we care about.
+    let nameToId = new Map<string, string>();
+    if (skillIds.length > 0) {
+      const { data: skillRows, error: skillsErr } = await sb
+        .from('skills')
+        .select('id, name')
+        .in('id', skillIds);
+      if (skillsErr) throw skillsErr;
+      nameToId = new Map(
+        (skillRows ?? []).map((s: { id: string; name: string }) => [s.name, s.id]),
+      );
+    }
+
+    const tally = (skillId: string): SkillProgressEntry => {
+      const existing = out.get(skillId);
+      if (existing) return existing;
+      const fresh: SkillProgressEntry = {
+        skillId,
+        savedCourses: 0,
+        appliedGigs: 0,
+        progress: 0,
+      };
+      out.set(skillId, fresh);
+      return fresh;
+    };
+
+    // Saved courses: match by course.skills[] (name) → skillId via the
+    // nameToId resolver. Names are case-sensitive on purpose — the catalog
+    // and the seeded courses use the same casing.
+    Array.from(courseNameById.entries()).forEach(([, names]) => {
+      names.forEach((n) => {
+        const id = nameToId.get(n);
+        if (id && skillSet.has(id)) {
+          const e = tally(id);
+          e.savedCourses += 1;
+        }
+      });
+    });
+
+    // Gig applications: gigs.skills[] holds skill names; same matcher.
+    type AppRow = {
+      gig_id: string;
+      gigs: { skills: string[] | null } | { skills: string[] | null }[] | null;
+    };
+    const appRows = (appsRes.data ?? []) as AppRow[];
+    for (const row of appRows) {
+      const gig = Array.isArray(row.gigs) ? row.gigs[0] : row.gigs;
+      const names = gig?.skills ?? [];
+      for (const n of names) {
+        const id = nameToId.get(n);
+        if (id && skillSet.has(id)) {
+          const e = tally(id);
+          e.appliedGigs += 1;
+        }
+      }
+    }
+
+    // Convert raw counts to a 0–100 progress score. Caps:
+    //   courses:  +30 each, max +60  (2 saved courses saturates this axis)
+    //   applies:  +15 each, max +40  (~3 applications saturates this axis)
+    Array.from(out.values()).forEach((e) => {
+      e.progress = Math.min(
+        100,
+        Math.min(60, e.savedCourses * 30) + Math.min(40, e.appliedGigs * 15),
+      );
+    });
+    return out;
+  }, out);
 }
 
 /**
@@ -180,29 +415,20 @@ export interface NewsletterSkillOption {
   icon: string | null;
 }
 
-export async function getSkillsForNewsletter(): Promise<NewsletterSkillOption[]> {
-  return safeQuery('getSkillsForNewsletter', async () => {
-    const sb = await createClient();
-    const { data, error } = await sb
-      .from('skills')
-      .select('id, name, icon')
-      .order('name');
-    if (error) throw error;
-    return (data ?? []) as NewsletterSkillOption[];
-  }, []);
-}
-
-/**
- * Deterministic progress value (0–100) derived from a string seed + index.
- * Lets the skills dashboard show varied progress bars without needing a
- * per-user table. Replace with `userskills` table when progress is persisted.
- */
-function deriveProgress(seed: string, idx: number, min: number, max: number): number {
-  let h = idx + 1;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
-  const range = max - min;
-  return min + Math.abs(h) % range;
-}
+export const getSkillsForNewsletter = cached(
+  async (): Promise<NewsletterSkillOption[]> =>
+    safeQuery('getSkillsForNewsletter', async () => {
+      const sb = createPublicClient();
+      const { data, error } = await sb
+        .from('skills')
+        .select('id, name, icon')
+        .order('name');
+      if (error) throw error;
+      return (data ?? []) as NewsletterSkillOption[];
+    }, []),
+  ['getSkillsForNewsletter'],
+  ['skills'],
+);
 
 // ============================================================================
 // Applications — uses shared ApplicationRow + mapApplicationRow from ./mappers
@@ -333,22 +559,24 @@ export async function searchSkills(term: string): Promise<RoadmapSkillHit[]> {
  * CourseCategory analogue — in that case we fall back to the closest match
  * via `mapGigToCourseCategory` so the query still returns useful rows.
  */
-export async function getCoursesByCategory(
-  category: GigCategory,
-): Promise<Course[]> {
-  const courseCategory = mapGigToCourseCategory(category);
-  return safeQuery('getCoursesByCategory', async () => {
-    const sb = await createClient();
-    const { data, error } = await sb
-      .from('courses')
-      .select('*')
-      .eq('category', courseCategory)
-      .order('students', { ascending: false })
-      .limit(3);
-    if (error) throw error;
-    return (data ?? []).map(mapCourseRow);
-  }, []);
-}
+export const getCoursesByCategory = cached(
+  async (category: GigCategory): Promise<Course[]> => {
+    const courseCategory = mapGigToCourseCategory(category);
+    return safeQuery('getCoursesByCategory', async () => {
+      const sb = createPublicClient();
+      const { data, error } = await sb
+        .from('courses')
+        .select('*')
+        .eq('category', courseCategory)
+        .order('students', { ascending: false })
+        .limit(3);
+      if (error) throw error;
+      return (data ?? []).map(mapCourseRow);
+    }, []);
+  },
+  ['getCoursesByCategory'],
+  ['courses'],
+);
 
 /**
  * Top 3 published gigs for a skill's category, ranked by max budget.
@@ -361,22 +589,23 @@ export async function getCoursesByCategory(
  * `status = 'published'` keeps draft / expired gigs off the roadmap — those
  * are admin-only artifacts (see migration 007).
  */
-export async function getPublishedGigsByCategory(
-  category: GigCategory,
-): Promise<Gig[]> {
-  return safeQuery('getPublishedGigsByCategory', async () => {
-    const sb = await createClient();
-    const { data, error } = await sb
-      .from('gigs')
-      .select('*')
-      .eq('category', category)
-      .eq('status', 'published')
-      .order('budget_max', { ascending: false })
-      .limit(3);
-    if (error) throw error;
-    return (data ?? []).map(mapGigRow);
-  }, []);
-}
+export const getPublishedGigsByCategory = cached(
+  async (category: GigCategory): Promise<Gig[]> =>
+    safeQuery('getPublishedGigsByCategory', async () => {
+      const sb = createPublicClient();
+      const { data, error } = await sb
+        .from('gigs')
+        .select('*')
+        .eq('category', category)
+        .eq('status', 'published')
+        .order('budget_max', { ascending: false })
+        .limit(3);
+      if (error) throw error;
+      return (data ?? []).map(mapGigRow);
+    }, []),
+  ['getPublishedGigsByCategory'],
+  ['gigs'],
+);
 
 /**
  * Average budget (IDR) across the published gigs in a category. Computed in
@@ -483,7 +712,7 @@ export interface HomepageStats {
 
 export async function getHomepageStats(): Promise<HomepageStats> {
   return safeQuery('getHomepageStats', async () => {
-    const sb = await createClient();
+    const sb = createPublicClient();
     const [gigs, users, budget] = await Promise.all([
       sb.from('gigs').select('*', { count: 'exact', head: true }).eq('status', 'published'),
       sb.from('users').select('*', { count: 'exact', head: true }),

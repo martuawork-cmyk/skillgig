@@ -1,14 +1,35 @@
-import { createClient } from './client';
+'use server';
+
+import { createClient } from './server';
 
 /**
- * SkillGig.id — write actions (insert/update).
+ * SkillGig.id — write actions (insert/update) + auth.
  *
- * These run on the **browser** via the anon Supabase client. RLS policies
- * control what an unauthenticated user can do — see `001_init.sql`.
+ * P4-A perf: these are Server Actions. Running them on the server keeps
+ * `@supabase/supabase-js` out of the client bundle (~80 kB saved on every page
+ * that previously imported these from a client component — login, signup,
+ * skills, and the header's user menu). RLS semantics are unchanged: the SSR
+ * server client forwards the caller's session cookie, so `auth.uid()` resolves
+ * to the same user as the old browser client did.
  *
- * For server-side writes (with admin/service role), a separate file would be
- * needed. None are required in Phase 4.
+ * Mirrors the pattern already used in ./apply-action.ts ('use server' + cookie
+ * client).
  */
+
+// `./server`'s createClient reads the env vars with a non-null assertion; guard
+// here so a missing-config dev environment surfaces the same 'network' reason
+// the UI expects (instead of a cryptic supabaseUrl error from the SDK).
+async function getServerClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    throw new Error(
+      'Supabase env vars missing. Set NEXT_PUBLIC_SUPABASE_URL and ' +
+        'NEXT_PUBLIC_SUPABASE_ANON_KEY in web/.env.local',
+    );
+  }
+  return createClient();
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -36,7 +57,7 @@ export async function subscribeEmail(email: string): Promise<SubscribeResult> {
   }
 
   try {
-    const sb = createClient(); // throws a clear Error if env vars missing
+    const sb = await getServerClient(); // throws a clear Error if env vars missing
     const { error } = await sb
       .from('subscribers')
       .insert({ email: trimmed });
@@ -96,7 +117,7 @@ export async function signInWithPassword(
   if (password.length < PASSWORD_MIN) return { ok: false, reason: 'weak-password' };
 
   try {
-    const sb = createClient();
+    const sb = await getServerClient();
     const { data, error } = await sb.auth.signInWithPassword({
       email: trimmed,
       password,
@@ -131,7 +152,7 @@ export async function signUpWithPassword(
   if (password.length < PASSWORD_MIN) return { ok: false, reason: 'weak-password', message: 'Password minimal 6 karakter.' };
 
   try {
-    const sb = createClient();
+    const sb = await getServerClient();
     const { data, error } = await sb.auth.signUp({
       email: trimmedEmail,
       password,
@@ -158,11 +179,101 @@ export async function signUpWithPassword(
 
 export async function signOut(): Promise<void> {
   try {
-    const sb = createClient();
+    const sb = await getServerClient();
     await sb.auth.signOut();
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[signOut] caught:', err);
+  }
+}
+
+// ============================================================================
+// User skills (P3-B)
+// ============================================================================
+
+export type UserSkillActionResult =
+  | { ok: true }
+  | { ok: false; reason: 'unauthenticated' | 'network' | 'unknown'; message: string };
+
+/**
+ * Add a skill to the current user's skill bag.
+ *
+ * - Requires authentication; RLS on `user_skills` enforces `user_id = auth.uid()`
+ *   on insert (see migration 012_user_skills.sql).
+ * - Idempotent: the UNIQUE(user_id, skill_id) index collapses duplicate adds
+ *   to a single row, which we surface as success so the "klik untuk tambah"
+ *   flow on /skills can be tapped twice without flashing an error.
+ * - Postgrest 23505 (unique_violation) is treated as success.
+ */
+export async function addUserSkill(
+  skillId: string,
+  level: 'beginner' | 'intermediate' | 'advanced' = 'beginner',
+): Promise<UserSkillActionResult> {
+  if (!skillId) {
+    return { ok: false, reason: 'unknown', message: 'Skill id kosong.' };
+  }
+
+  try {
+    const sb = await getServerClient();
+    const { data: auth, error: authErr } = await sb.auth.getUser();
+    if (authErr || !auth?.user) {
+      return { ok: false, reason: 'unauthenticated', message: 'Silakan login dulu.' };
+    }
+
+    const { error } = await sb
+      .from('user_skills')
+      .insert({ user_id: auth.user.id, skill_id: skillId, level });
+    if (!error) return { ok: true };
+    if (error.code === '23505') return { ok: true }; // already in the bag
+    // eslint-disable-next-line no-console
+    console.warn('[addUserSkill] insert failed:', error);
+    return { ok: false, reason: 'unknown', message: error.message };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('env vars missing')) {
+      return { ok: false, reason: 'network', message: 'Belum terkoneksi ke Supabase.' };
+    }
+    // eslint-disable-next-line no-console
+    console.warn('[addUserSkill] caught:', err);
+    return { ok: false, reason: 'unknown', message: msg };
+  }
+}
+
+/**
+ * Remove a skill from the current user's bag. Idempotent — deleting a row
+ * that no longer exists is a no-op and returns success.
+ */
+export async function removeUserSkill(
+  skillId: string,
+): Promise<UserSkillActionResult> {
+  if (!skillId) {
+    return { ok: false, reason: 'unknown', message: 'Skill id kosong.' };
+  }
+
+  try {
+    const sb = await getServerClient();
+    const { data: auth, error: authErr } = await sb.auth.getUser();
+    if (authErr || !auth?.user) {
+      return { ok: false, reason: 'unauthenticated', message: 'Silakan login dulu.' };
+    }
+
+    const { error } = await sb
+      .from('user_skills')
+      .delete()
+      .eq('user_id', auth.user.id)
+      .eq('skill_id', skillId);
+    if (!error) return { ok: true };
+    // eslint-disable-next-line no-console
+    console.warn('[removeUserSkill] delete failed:', error);
+    return { ok: false, reason: 'unknown', message: error.message };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('env vars missing')) {
+      return { ok: false, reason: 'network', message: 'Belum terkoneksi ke Supabase.' };
+    }
+    // eslint-disable-next-line no-console
+    console.warn('[removeUserSkill] caught:', err);
+    return { ok: false, reason: 'unknown', message: msg };
   }
 }
 
@@ -179,7 +290,7 @@ export async function subscribeSkillAlert(
   skillId: string,
 ): Promise<{ error?: string }> {
   try {
-    const sb = createClient();
+    const sb = await getServerClient();
     const { data: auth } = await sb.auth.getUser();
     if (!auth?.user?.email) {
       return { error: 'Anda harus login untuk mengaktifkan alert.' };

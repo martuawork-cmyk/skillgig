@@ -68,6 +68,17 @@ export interface Course {
   rating: number;
   /** Admin-controlled flag — featured courses surface on the /learn landing. */
   featured: boolean;
+  /**
+   * Outbound monetised URL for the "Mulai Belajar" CTA. When null the card
+   * falls back to `url`. Populated from `courses.affiliate_url`.
+   */
+  affiliateUrl?: string | null;
+  /**
+   * Lifetime click count for this course's affiliate link. Surfaced only
+   * on /admin/courses at the moment — kept on the type so the admin list
+   * doesn't need a second query.
+   */
+  affiliateClicks?: number;
 }
 
 export type CoursePlatform = 'Udemy' | 'Coursera' | 'Dicoding' | 'YouTube';

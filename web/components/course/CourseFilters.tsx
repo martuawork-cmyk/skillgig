@@ -35,6 +35,7 @@ export function CourseFilters({
         </p>
         <label className="flex items-center gap-2 text-sm text-slate-600">
           <span className="hidden sm:inline">Sort:</span>
+          <span className="sr-only">Urutkan kursus</span>
           <select
             value={sort}
             onChange={(e) => onChangeSort(e.target.value as SortKey)}

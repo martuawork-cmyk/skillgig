@@ -66,6 +66,12 @@ export type CourseInput = {
   durationHours?: number;
   enrolled?: boolean;
   featured?: boolean;
+  /**
+   * Outbound monetised URL. Optional. Stored as-is (the form validates
+   * `type=url`); pass null/undefined to leave the column untouched on
+   * update, or an empty string to clear it.
+   */
+  affiliateUrl?: string | null;
 };
 
 /* =============================================================================
@@ -74,12 +80,43 @@ export type CourseInput = {
 
 export async function adminListCourses(): Promise<Course[]> {
   const sb = createAdminClient();
+  // Two queries, not an embedded table→view join. Click counts are an
+  // analytics add-on: a PostgREST relationship-resolution quirk against the
+  // `affiliate_click_counts` view would otherwise throw here and take the
+  // whole courses CRUD down with it. A plain SELECT off a view is rock
+  // solid, so we read it directly (service role bypasses RLS) and merge the
+  // counts onto the mapped rows in JS.
+  const [coursesRes, counts] = await Promise.all([
+    sb.from('courses').select('*').order('created_at', { ascending: false }),
+    fetchAffiliateClickCounts(sb),
+  ]);
+  if (coursesRes.error) throw coursesRes.error;
+  return (coursesRes.data ?? []).map((r) => {
+    const course = mapCourseRow(r as unknown as CourseRow);
+    return counts.has(course.id)
+      ? { ...course, affiliateClicks: counts.get(course.id)! }
+      : course;
+  });
+}
+
+/**
+ * Best-effort per-course affiliate click counts read straight off the
+ * `affiliate_click_counts` view. Returns an empty Map on any error (view not
+ * migrated yet, schema drift, RLS surprise) so the admin listing degrades to
+ * "0 clicks everywhere" instead of throwing — analytics must never block CRUD.
+ */
+async function fetchAffiliateClickCounts(
+  sb: ReturnType<typeof createAdminClient>,
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
   const { data, error } = await sb
-    .from('courses')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((r) => mapCourseRow(r as CourseRow));
+    .from('affiliate_click_counts')
+    .select('course_id, clicks');
+  if (error || !data) return out;
+  for (const row of data as { course_id: string; clicks: number | string }[]) {
+    out.set(row.course_id, Number(row.clicks) || 0);
+  }
+  return out;
 }
 
 export async function adminCreateCourse(input: CourseInput): Promise<Course> {
@@ -98,10 +135,15 @@ export async function adminCreateCourse(input: CourseInput): Promise<Course> {
     duration_hours: input.durationHours ?? 0,
     enrolled: input.enrolled ?? false,
     featured: input.featured ?? false,
+    affiliate_url: normaliseAffiliateUrl(input.affiliateUrl),
   };
-  const { data, error } = await sb.from('courses').insert(row).select('*').single();
+  const { data, error } = await sb
+    .from('courses')
+    .insert(row)
+    .select('*')
+    .single();
   if (error) throw error;
-  return mapCourseRow(data as CourseRow);
+  return mapCourseRow(data as unknown as CourseRow);
 }
 
 export async function adminUpdateCourse(id: string, input: Partial<CourseInput>): Promise<Course> {
@@ -120,6 +162,12 @@ export async function adminUpdateCourse(id: string, input: Partial<CourseInput>)
   if (input.durationHours !== undefined) patch.duration_hours = input.durationHours;
   if (input.enrolled !== undefined) patch.enrolled = input.enrolled;
   if (input.featured !== undefined) patch.featured = input.featured;
+  if (input.affiliateUrl !== undefined) {
+    // Empty string → admin wants to clear the link. Anything else goes
+    // through `normaliseAffiliateUrl` so the URL gets trimmed to "" if
+    // it's blank, or left untouched when valid.
+    patch.affiliate_url = input.affiliateUrl === '' ? null : normaliseAffiliateUrl(input.affiliateUrl);
+  }
   const { data, error } = await sb
     .from('courses')
     .update(patch)
@@ -127,7 +175,18 @@ export async function adminUpdateCourse(id: string, input: Partial<CourseInput>)
     .select('*')
     .single();
   if (error) throw error;
-  return mapCourseRow(data as CourseRow);
+  return mapCourseRow(data as unknown as CourseRow);
+}
+
+/**
+ * Trim + null-coerce an optional URL field from an admin form. Returns
+ * null when the value is empty/whitespace, otherwise a trimmed string.
+ * Keeps the create / update paths symmetric.
+ */
+function normaliseAffiliateUrl(v: string | null | undefined): string | null {
+  if (v == null) return null;
+  const trimmed = v.trim();
+  return trimmed === '' ? null : trimmed;
 }
 
 export async function adminToggleCourseFeatured(id: string, featured: boolean): Promise<void> {

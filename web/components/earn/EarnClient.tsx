@@ -119,6 +119,7 @@ export function EarnClient({ initialGigs }: { initialGigs: Gig[] }) {
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
+              aria-label="Cari gig berdasarkan judul, skill, atau deskripsi"
               placeholder="Cari gig berdasarkan judul, skill, atau deskripsi..."
               className="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
             />
@@ -127,7 +128,7 @@ export function EarnClient({ initialGigs }: { initialGigs: Gig[] }) {
                 type="button"
                 onClick={() => setQ('')}
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-500 hover:text-slate-700 rounded-md hover:bg-slate-100"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -198,6 +199,10 @@ export function EarnClient({ initialGigs }: { initialGigs: Gig[] }) {
           </button>
         )}
       </div>
+
+      {/* Section heading for the results — keeps heading order h1 → h2 → h3
+          (EarnGigCard titles are h3). Visually hidden, announced to AT. */}
+      <h2 className="sr-only">Daftar gig yang direkomendasikan</h2>
 
       {/* Grid */}
       {filtered.length === 0 ? (

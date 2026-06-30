@@ -203,7 +203,7 @@ export function SkillAutocomplete({
               inputRef.current?.focus();
             }}
             aria-label="Clear search"
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-500 hover:text-slate-700 rounded-md hover:bg-slate-100"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -273,7 +273,7 @@ export function SkillAutocomplete({
                   >
                     {hit.name}
                   </span>
-                  <span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-slate-400 shrink-0">
+                  <span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-slate-500 shrink-0">
                     {hit.category}
                   </span>
                 </li>

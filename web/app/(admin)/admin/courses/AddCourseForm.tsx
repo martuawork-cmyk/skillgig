@@ -138,6 +138,22 @@ export function AddCourseForm() {
         <input name="skills" placeholder="React, Hooks, TypeScript" className={inputCls} />
       </Field>
 
+      <Field
+        label="Affiliate URL (opsional, monetisasi Mulai Belajar)"
+        className="sm:col-span-2 lg:col-span-3"
+      >
+        <input
+          name="affiliateUrl"
+          type="url"
+          placeholder="https://udemy.com/course/...?referral=…"
+          className={inputCls}
+        />
+        <span className="block text-[11px] text-slate-500 mt-1">
+          Kosongkan untuk memakai URL kursus biasa. Klik pada tombol Mulai
+          Belajar akan dicatat di tabel <code>affiliate_clicks</code>.
+        </span>
+      </Field>
+
       <div className="sm:col-span-2 lg:col-span-3 flex items-center gap-6 pt-1">
         <label className="inline-flex items-center gap-2 text-sm">
           <input

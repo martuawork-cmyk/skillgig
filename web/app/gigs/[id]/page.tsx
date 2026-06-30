@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -16,8 +17,51 @@ import {
   levelColor,
   levelLabel,
 } from '@/lib/utils';
+import { buildMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Dynamic metadata for individual gig pages. Fetches the gig from Supabase
+ * so the title reflects the actual gig (rather than a generic template).
+ *
+ * Falls back to a generic title if the gig isn't found or Supabase isn't
+ * configured — Next.js will still render the page's `notFound()` for the
+ * missing case, so the metadata here is just a safety net.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: { id: string };
+}): Promise<Metadata> {
+  const fallback = buildMetadata({
+    title: 'Detail Gig Freelance | SkillGig.id',
+    description:
+      'Lihat detail gig freelance: budget, durasi, skill yang dibutuhkan, dan klien. Lamar langsung dari SkillGig.id.',
+    path: `/gigs/${params.id}`,
+  });
+
+  if (!isSupabaseConfigured()) return fallback;
+
+  try {
+    const gig = await getGig(params.id);
+    if (!gig) return fallback;
+
+    const title = `${gig.titleId} | SkillGig.id`;
+    const description =
+      gig.descriptionId && gig.descriptionId.length > 0
+        ? gig.descriptionId.slice(0, 160)
+        : `Lowongan freelance: ${gig.titleId}. Budget ${formatIDR(gig.budgetMin)} – ${formatIDR(gig.budgetMax)}, durasi ${gig.durationWeeks} minggu.`;
+
+    return buildMetadata({
+      title,
+      description,
+      path: `/gigs/${params.id}`,
+    });
+  } catch {
+    return fallback;
+  }
+}
 
 export default async function GigDetailPage({
   params,
@@ -163,7 +207,7 @@ export default async function GigDetailPage({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="px-3 py-2.5 bg-slate-50 rounded-lg border border-slate-100">
-      <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">
+      <p className="text-[10px] uppercase tracking-wide text-slate-600 font-semibold">
         {label}
       </p>
       <p className="text-sm font-bold text-slate-900 mt-0.5 truncate">{value}</p>

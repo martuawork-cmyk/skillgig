@@ -16,7 +16,7 @@ export function RoadmapTimeline({ roadmap }: { roadmap: Roadmap }) {
           <div className="px-5 sm:px-6 py-5 sm:py-6 space-y-3">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div>
-                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">
+                <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">
                   Roadmap
                 </p>
                 <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Header } from '@/components/layout/Header';
@@ -6,13 +6,18 @@ import { JourneyNav } from '@/components/layout/JourneyNav';
 import { Footer } from '@/components/layout/Footer';
 import { SavedHydrator } from '@/components/system/SavedHydrator';
 import { getCurrentUser } from '@/lib/supabase/session';
+import { getSiteMetadata } from '@/lib/seo';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
-export const metadata: Metadata = {
-  title: 'SkillGig.id — Learn, Build Skill, Discover Gig, Apply, Earn',
-  description:
-    'Platform Indonesia yang menghubungkan pembelajaran skill digital dengan peluang freelance.',
+// Default SEO + social metadata for the whole site. Per-page metadata built
+// via `buildMetadata()` in lib/seo.ts overrides these.
+export const metadata: Metadata = getSiteMetadata();
+
+export const viewport: Viewport = {
+  themeColor: '#4f46e5',
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default async function RootLayout({

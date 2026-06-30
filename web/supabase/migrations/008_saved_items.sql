@@ -148,15 +148,17 @@ CREATE OR REPLACE FUNCTION public.saved_items_session_unsave(
   p_item_id    text
 )
 RETURNS boolean
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+BEGIN
   DELETE FROM saved_items
    WHERE session_id = p_session_id
      AND item_type   = p_item_type
      AND item_id     = p_item_id;
-  SELECT FOUND;
+  RETURN FOUND;
+END;
 $$;
 
 -- Lock down EXECUTE on the helpers to anon + authenticated. Without this

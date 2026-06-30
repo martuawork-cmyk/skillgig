@@ -13,6 +13,19 @@ body {
     radial-gradient(at 80% 0%,  rgba(168, 85, 247, 0.04) 0px, transparent 50%);
 }
 
+@layer base {
+  /* Visible keyboard focus everywhere (WCAG 2.4.7 / 1.4.11). Form controls
+     already show a focus ring via Tailwind's `focus:ring-*`; this rule
+     guarantees a clear 2px indigo outline for links, buttons, pills, and any
+     other focusable element that doesn't define its own. `:focus-visible`
+     only fires for keyboard/AT users, so mouse clicks stay clean. Modern
+     browsers render `outline` following the element's `border-radius`. */
+  :focus-visible {
+    outline: 2px solid #4338ca; /* indigo-700 — passes AA on light & dark bg */
+    outline-offset: 2px;
+  }
+}
+
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;

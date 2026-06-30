@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import {
   adminCreateGig,
@@ -72,6 +72,7 @@ export async function createGigAction(formData: FormData): Promise<ActionResult>
     });
     revalidatePath('/admin');
     revalidatePath('/admin/gigs');
+    revalidateTag('gigs');
     return { ok: true, id: gig.id };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Gagal membuat gig.' };
@@ -104,6 +105,7 @@ export async function updateGigAction(
     revalidatePath('/admin');
     revalidatePath('/admin/gigs');
     revalidatePath(`/admin/gigs/${id}`);
+    revalidateTag('gigs');
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Gagal update gig.' };
@@ -114,12 +116,14 @@ export async function setGigStatusAction(id: string, status: GigStatus): Promise
   await adminSetGigStatus(id, status);
   revalidatePath('/admin');
   revalidatePath('/admin/gigs');
+  revalidateTag('gigs');
 }
 
 export async function deleteGigAction(id: string): Promise<void> {
   await adminDeleteGig(id);
   revalidatePath('/admin');
   revalidatePath('/admin/gigs');
+  revalidateTag('gigs');
 }
 
 export async function deleteGigAndRedirectAction(formData: FormData): Promise<void> {
@@ -128,6 +132,7 @@ export async function deleteGigAndRedirectAction(formData: FormData): Promise<vo
   await adminDeleteGig(id);
   revalidatePath('/admin');
   revalidatePath('/admin/gigs');
+  revalidateTag('gigs');
 }
 
 // Helper for client-side wrappers that want to redirect back to /admin/gigs

@@ -97,7 +97,7 @@ export function EarnGigCard({ gig, onApply }: Props) {
         {/* Meta row: budget + level + posted */}
         <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">
+            <p className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
               Budget
             </p>
             <p className="font-bold text-slate-900 text-xs sm:text-sm truncate">

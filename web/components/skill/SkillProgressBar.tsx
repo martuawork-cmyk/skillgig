@@ -25,7 +25,7 @@ export function SkillProgressBar({ skill }: { skill: Skill }) {
         </div>
         <div className="text-right shrink-0">
           <p className="text-2xl font-extrabold text-slate-900 leading-none">
-            {pct}<span className="text-sm text-slate-400">%</span>
+            {pct}<span className="text-sm text-slate-500">%</span>
           </p>
         </div>
       </div>

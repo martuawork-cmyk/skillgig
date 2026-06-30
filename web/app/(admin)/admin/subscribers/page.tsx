@@ -84,14 +84,14 @@ export default async function AdminSubscribersPage() {
                         {s.skillName ? (
                           <Badge tone="indigo">{s.skillName}</Badge>
                         ) : (
-                          <span className="text-xs text-slate-400">—</span>
+                          <span className="text-xs text-slate-500">—</span>
                         )}
                       </td>
                       <td className="px-5 py-3">
                         {s.skillCategory ? (
                           <Badge tone="violet">{s.skillCategory}</Badge>
                         ) : (
-                          <span className="text-xs text-slate-400">—</span>
+                          <span className="text-xs text-slate-500">—</span>
                         )}
                       </td>
                       <td className="px-5 py-3 text-slate-500 whitespace-nowrap">
