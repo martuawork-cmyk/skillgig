@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireAdmin } from '@/lib/supabase/admin';
+import { requireAdmin, isAdminConfigured } from '@/lib/supabase/admin';
 import { getCurrentUser } from '@/lib/supabase/session';
 import { isSupabaseConfigured } from '@/components/feedback/ErrorState';
 import { cn } from '@/lib/utils';
@@ -33,7 +33,12 @@ export default async function AdminLayout({
 }) {
   // Defensive fallback — requireAdmin already redirects, but typing this
   // async returns User makes the assertion below safe.
-  if (!isSupabaseConfigured()) {
+  // NOTE: the admin layer additionally needs SUPABASE_SERVICE_ROLE_KEY (every
+  // admin query goes through createAdminClient(), which throws when it is
+  // missing). isSupabaseConfigured() only checks URL + anon key, so without
+  // the isAdminConfigured() term a logged-in admin would 500 on the dashboard
+  // instead of seeing this setup fallback. Keep both checks.
+  if (!isSupabaseConfigured() || !isAdminConfigured()) {
     return (
       <div className="min-h-[60vh] grid place-items-center px-4">
         <div className="max-w-md text-center">
