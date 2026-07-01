@@ -8,7 +8,8 @@ export type GigCategory =
   | 'writing'
   | 'marketing'
   | 'data'
-  | 'video';
+  | 'video'
+  | 'other';
 
 export type ApplicationStatus = 'pending' | 'reviewed' | 'accepted' | 'rejected';
 
@@ -41,6 +42,10 @@ export interface Gig {
   postedAt: string; // ISO
   platform: GigPlatform;
   url: string;
+  /** Canonical dedup key for synced listings (equals `url` for Remotive
+   *  imports). Backed by `gigs.source_url` (migration 015); powers the sync's
+   *  `ON CONFLICT (source_url) DO UPDATE`. Absent on legacy/mock rows. */
+  sourceUrl?: string | null;
   /** Lifecycle status controlled by the admin layer. Defaults to 'published'
    *  for legacy rows that pre-date migration 007. */
   status: GigStatus;
@@ -83,13 +88,15 @@ export type GigPlatform =
   | 'Upwork'
   | 'Fiverr'
   | 'Projects.co.id'
-  | 'Sribulancer';
+  | 'Sribulancer'
+  | 'Remotive';
 
 export const GIG_PLATFORMS: Record<GigPlatform, string> = {
   'Upwork':         'bg-sky-100 text-sky-700',
   'Fiverr':         'bg-emerald-100 text-emerald-700',
   'Projects.co.id': 'bg-orange-100 text-orange-700',
   'Sribulancer':    'bg-violet-100 text-violet-700',
+  'Remotive':       'bg-teal-100 text-teal-700',
 };
 
 export interface Course {
@@ -184,6 +191,7 @@ export const CATEGORIES: { value: GigCategory; label: string; color: string }[] 
   { value: 'marketing',label: 'Marketing', color: 'bg-emerald-100 text-emerald-700' },
   { value: 'data',     label: 'Data',      color: 'bg-sky-100 text-sky-700' },
   { value: 'video',    label: 'Video',     color: 'bg-rose-100 text-rose-700' },
+  { value: 'other',    label: 'Other',     color: 'bg-slate-100 text-slate-700' },
 ];
 
 // Roadmap — exploratory data for /roadmap page (Step 3 of journey)

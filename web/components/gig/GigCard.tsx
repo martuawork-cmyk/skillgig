@@ -57,6 +57,12 @@ export function GigCard({ gig }: Props) {
   const durationLabel =
     gig.durationWeeks != null ? `${gig.durationWeeks}w` : (gig.jobType ?? 'Full-Time');
 
+  // Synced Remotive gigs often omit salary — both bounds land at 0. Show a
+  // "nego" placeholder instead of the meaningless "USD 0–0/bln".
+  const salaryMin = gig.salaryMin ?? gig.budgetMin;
+  const salaryMax = gig.salaryMax ?? gig.budgetMax;
+  const salaryHidden = salaryMin === 0 && salaryMax === 0;
+
   return (
     <div className="group relative">
       <Card className="h-full flex flex-col hover:border-indigo-300 hover:shadow-md transition group-hover:-translate-y-0.5">
@@ -71,6 +77,10 @@ export function GigCard({ gig }: Props) {
               )}
               {gig.isRemote && (
                 <Badge className="bg-emerald-100 text-emerald-700">Remote</Badge>
+              )}
+              {/* Remotive ToS attribution — only on synced Remotive gigs. */}
+              {gig.platform === 'Remotive' && (
+                <Badge className="bg-teal-100 text-teal-700">via Remotive</Badge>
               )}
             </div>
             <Badge className={levelColor(gig.level)}>
@@ -87,7 +97,21 @@ export function GigCard({ gig }: Props) {
             </Link>
             {(gig.company || gig.company_logo) && (
               <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                {gig.company_logo && <span aria-hidden>{gig.company_logo}</span>}
+                {gig.company_logo &&
+                  (gig.company_logo.startsWith('http') ? (
+                    // Remotive sends a logo URL (not an emoji) — render it.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={gig.company_logo}
+                      alt=""
+                      width={16}
+                      height={16}
+                      className="h-4 w-4 rounded object-contain"
+                    />
+                  ) : (
+                    // Legacy / seed gigs store an emoji here.
+                    <span aria-hidden>{gig.company_logo}</span>
+                  ))}
                 {gig.company && <span className="font-medium text-slate-600">{gig.company}</span>}
               </p>
             )}
@@ -113,11 +137,13 @@ export function GigCard({ gig }: Props) {
                 Salary
               </p>
               <p className="font-bold text-slate-900 text-sm truncate">
-                {formatSalaryRange(
-                  gig.salaryMin ?? gig.budgetMin,
-                  gig.salaryMax ?? gig.budgetMax,
-                  gig.salaryCurrency ?? 'IDR',
-                )}
+                {salaryHidden
+                  ? 'Gaji nego'
+                  : formatSalaryRange(
+                      salaryMin,
+                      salaryMax,
+                      gig.salaryCurrency ?? 'IDR',
+                    )}
               </p>
             </div>
             <div className="text-right shrink-0">

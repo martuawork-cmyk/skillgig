@@ -696,6 +696,10 @@ function mapGigToCourseCategory(c: GigCategory): CourseCategory {
     case 'data':      return 'tech';
     case 'video':     return 'design';
     case 'writing':   return 'marketing';
+    // 'other' is the catch-all for synced Remotive gigs whose category has no
+    // SkillGig equivalent (DevOps, QA, Product, …) — tech-adjacent, so suggest
+    // tech courses rather than returning nothing.
+    case 'other':     return 'tech';
   }
 }
 

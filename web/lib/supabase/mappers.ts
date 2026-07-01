@@ -43,12 +43,14 @@ const GIG_CATEGORIES: ReadonlySet<string> = new Set([
   'marketing',
   'data',
   'video',
+  'other',
 ]);
 const GIG_PLATFORMS: ReadonlySet<string> = new Set([
   'Upwork',
   'Fiverr',
   'Projects.co.id',
   'Sribulancer',
+  'Remotive',
 ]);
 const GIG_JOB_TYPES: ReadonlySet<string> = new Set([
   'Full-Time',
@@ -155,6 +157,9 @@ export type GigRow = {
   location?: string | null;
   is_remote?: boolean | null;
   salary_currency?: string | null;
+  /* Dedup key for synced listings (Remotive URL). Added by migration 015;
+     absent (NULL) on legacy / mock / admin-created rows. */
+  source_url?: string | null;
 };
 
 export type SkillRow = {
@@ -238,6 +243,7 @@ export function mapGigRow(r: GigRow): Gig {
     postedAt: r.created_at,
     platform: asGigPlatform(r.platform),
     url: r.url,
+    sourceUrl: r.source_url ?? null,
     status: asGigStatus(r.status),
     company: r.company ?? null,
     company_logo: r.company_logo ?? null,
