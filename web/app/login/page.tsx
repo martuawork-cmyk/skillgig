@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Logo } from '@/components/brand/Logo';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { isSupabaseConfigured } from '@/lib/supabase/session';
@@ -34,13 +35,8 @@ export default function LoginPage() {
 function PageHeading() {
   return (
     <header className="text-center space-y-2">
-      <Link href="/" className="inline-flex items-center gap-2 group">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 grid place-items-center shadow-soft group-hover:scale-105 transition">
-          <span className="text-white font-extrabold text-sm">SG</span>
-        </div>
-        <span className="font-extrabold text-slate-900 tracking-tight text-lg">
-          SkillGig<span className="text-indigo-600">.id</span>
-        </span>
+      <Link href="/" aria-label="SkillGig.id — beranda" className="inline-flex items-center group">
+        <Logo size="lg" className="transition-opacity group-hover:opacity-90" />
       </Link>
       <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight pt-2">
         Masuk ke SkillGig

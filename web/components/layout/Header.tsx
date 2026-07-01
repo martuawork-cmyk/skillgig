@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { UserMenu } from '@/components/layout/UserMenu';
+import { Logo } from '@/components/brand/Logo';
 import { cn } from '@/lib/utils';
 
 const NAV = [
@@ -51,22 +52,20 @@ export function Header({ user }: Props) {
   return (
     <header className="sticky top-0 z-30 backdrop-blur-md bg-white/80 border-b border-slate-200/70">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 grid place-items-center shadow-soft group-hover:scale-105 transition">
-            <span className="text-white font-extrabold text-sm">SG</span>
-          </div>
-          <div className="leading-tight">
-            {/* Brand wordmark — a <span>, not an <h1>: every page renders its
-                own <h1> for the page title, so the logo must not introduce a
-                second top-level heading (WCAG: one h1 per page). */}
-            <span className="block font-extrabold text-slate-900 tracking-tight text-base">
-              SkillGig<span className="text-indigo-600">.id</span>
-            </span>
-            <span className="block text-[10px] text-slate-500 -mt-0.5 hidden sm:block">
-              Learn · Build · Earn
-            </span>
-          </div>
+        {/* Logo — inline SVG mark + wordmark (no network request, crisp at any
+            size). The wordmark is a <span>, not an <h1>: every page renders its
+            own <h1> for the page title, so the logo must not introduce a second
+            top-level heading (WCAG: one h1 per page). */}
+        <Link
+          href="/"
+          aria-label="SkillGig.id — beranda"
+          className="flex items-center group shrink-0"
+        >
+          <Logo
+            size="md"
+            tagline="Learn · Build · Earn"
+            className="transition-opacity group-hover:opacity-90"
+          />
         </Link>
 
         {/* Desktop nav */}

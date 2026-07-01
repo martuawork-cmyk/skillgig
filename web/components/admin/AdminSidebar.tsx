@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
 import { BookOpen, Briefcase, LayoutDashboard, LogOut, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BrandMark } from '@/components/brand/Logo';
 
 export type AdminUser = {
   name: string;
@@ -44,9 +45,7 @@ export function AdminSidebar({ user }: Props) {
     <aside className="fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col border-r border-slate-200 bg-white">
       {/* Brand */}
       <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-slate-100 px-5">
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 shadow-soft">
-          <span className="text-sm font-extrabold text-white">SG</span>
-        </div>
+        <BrandMark className="h-9 w-9 text-[#17255A]" />
         <div className="leading-tight">
           <p className="text-base font-extrabold tracking-tight text-slate-900">
             SkillGig Admin

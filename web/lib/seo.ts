@@ -7,8 +7,10 @@ export const SITE_NAME = 'SkillGig.id';
 const DEFAULT_DESCRIPTION =
   'SkillGig.id menghubungkan perjalanan belajar skill digital, membangun portofolio, menemukan gig, melamar, dan menghasilkan — semuanya untuk freelancer Indonesia.';
 
-const DEFAULT_OG_IMAGE = `${SITE_URL}/opengraph-image`;
-const DEFAULT_TWITTER_IMAGE = `${SITE_URL}/twitter-image`;
+// A single 1200×630 brand image serves both OpenGraph and Twitter previews.
+// Served as a static, long-cached asset (see vercel.json) — no per-build render.
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
+const DEFAULT_TWITTER_IMAGE = `${SITE_URL}/og-image.png`;
 
 /**
  * Build a Next.js `Metadata` object with full SEO + social coverage.
@@ -130,8 +132,8 @@ export function getSiteMetadata(): Metadata {
         'max-snippet': -1,
       },
     },
-    icons: {
-      icon: '/favicon.ico',
-    },
+    // Icons are provided via App Router file conventions (app/icon.svg,
+    // app/icon.png, app/apple-icon.png, app/favicon.ico) — Next.js injects the
+    // matching <link> tags automatically, so we don't duplicate them here.
   };
 }

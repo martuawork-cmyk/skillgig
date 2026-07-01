@@ -4,7 +4,7 @@ import './globals.css';
 import { SiteChrome } from '@/components/layout/SiteChrome';
 import { SavedHydrator } from '@/components/system/SavedHydrator';
 import { getCurrentUser } from '@/lib/supabase/session';
-import { getSiteMetadata } from '@/lib/seo';
+import { getSiteMetadata, SITE_URL } from '@/lib/seo';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -23,7 +23,7 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = getSiteMetadata();
 
 export const viewport: Viewport = {
-  themeColor: '#4f46e5',
+  themeColor: '#17255A',
   width: 'device-width',
   initialScale: 1,
 };
@@ -49,6 +49,20 @@ export default async function RootLayout({
   return (
     <html lang="id" className={`${inter.variable} ${jakarta.variable}`}>
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+        {/* Organization structured data — gives search engines the official
+            brand name + logo (Google prefers a raster logo for this field). */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'SkillGig.id',
+              url: SITE_URL,
+              logo: `${SITE_URL}/logo.png`,
+            }),
+          }}
+        />
         <SiteChrome user={headerUser}>{children}</SiteChrome>
         <SavedHydrator />
       </body>

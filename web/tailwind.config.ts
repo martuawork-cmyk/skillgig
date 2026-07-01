@@ -11,6 +11,9 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        // Brand palette — matches the SkillGig logo mark + wordmark.
+        navy: "#17255A",
+        gold: "#F4B400",
       },
     },
   },

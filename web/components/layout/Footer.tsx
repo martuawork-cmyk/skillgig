@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Logo } from '@/components/brand/Logo';
 
 export function Footer() {
   return (
@@ -6,13 +7,8 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-2">
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 grid place-items-center">
-                <span className="text-white font-extrabold text-xs">SG</span>
-              </div>
-              <h3 className="font-bold text-white">
-                SkillGig<span className="text-indigo-400">.id</span>
-              </h3>
+            <div className="mb-3">
+              <Logo tone="light" size="sm" />
             </div>
             <p className="text-sm text-slate-400 max-w-md leading-relaxed">
               Platform Indonesia yang menghubungkan pembelajaran skill digital
