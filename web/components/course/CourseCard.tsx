@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { useToast, Toast } from '@/components/ui/Toast';
-import { COURSE_PLATFORMS, type Course } from '@/lib/types';
-import { formatIDR, formatCompact, levelColor, levelLabel, cn } from '@/lib/utils';
+import { COURSE_PLATFORMS, coursePlatformIcon, type Course } from '@/lib/types';
+import { formatCoursePrice, formatCompact, levelColor, levelLabel, cn } from '@/lib/utils';
 import { useSavedStore } from '@/lib/store/savedStore';
 
 type Props = {
@@ -42,21 +42,39 @@ export function CourseCard({ course }: Props) {
   return (
     <Card className="h-full hover:border-indigo-300 hover:shadow-md transition flex flex-col">
       <div className="px-5 sm:px-6 py-5 flex-1 flex flex-col gap-3">
-        {/* Thumbnail + platform badge */}
-        <div className="flex items-start justify-between">
+        {/* Thumbnail + platform / featured badges */}
+        <div className="flex items-start justify-between gap-2">
           <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-100 to-violet-100 grid place-items-center text-3xl shrink-0">
             {course.thumbnail}
           </div>
-          <Badge className={COURSE_PLATFORMS[course.platform]}>
-            {course.platform}
-          </Badge>
+          <div className="flex flex-col items-end gap-1.5">
+            {course.featured && (
+              <Badge tone="amber">
+                <span aria-hidden>⭐</span> FEATURED
+              </Badge>
+            )}
+            <Badge className={COURSE_PLATFORMS[course.platform]}>
+              <span aria-hidden>{coursePlatformIcon(course.platform)}</span>
+              {course.platform}
+            </Badge>
+          </div>
         </div>
 
-        {/* Title + meta */}
+        {/* Title + rating + meta */}
         <div className="flex-1">
           <h3 className="font-bold text-slate-900 leading-snug line-clamp-2">
             {course.titleId}
           </h3>
+          {course.rating > 0 && (
+            <div className="flex items-center gap-1 mt-1">
+              <span className="text-amber-400 text-sm leading-none" aria-hidden>
+                ★
+              </span>
+              <span className="text-xs font-semibold text-slate-700">
+                {course.rating.toFixed(1)}
+              </span>
+            </div>
+          )}
           <p className="text-xs text-slate-500 mt-1">
             {course.durationHours} jam · {formatCompact(course.students)} siswa ·{' '}
             <span className={levelColor(course.level).replace('bg-', 'text-').split(' ')[1]}>
@@ -86,10 +104,10 @@ export function CourseCard({ course }: Props) {
         <div className="pt-3 mt-auto border-t border-slate-100 flex items-center justify-between gap-2">
           <div className="min-w-0">
             {isFree ? (
-              <span className="text-lg font-extrabold text-emerald-600">Gratis</span>
+              <Badge tone="emerald">GRATIS</Badge>
             ) : (
               <span className="text-lg font-extrabold text-slate-900">
-                {formatIDR(course.price)}
+                {formatCoursePrice(course.price)}
               </span>
             )}
           </div>

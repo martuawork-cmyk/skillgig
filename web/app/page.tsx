@@ -6,7 +6,7 @@ import { GigCard } from '@/components/gig/GigCard';
 import { JobCard } from '@/components/job/JobCard';
 import { CourseCard } from '@/components/course/CourseCard';
 import { NewsletterSection } from '@/components/newsletter/NewsletterSection';
-import { getCourses, getGigs, getJobs, getHomepageStats, getSkillsForNewsletter, isSupabaseConfigured } from '@/lib/supabase/queries';
+import { getFeaturedCourses, getGigs, getJobs, getHomepageStats, getSkillsForNewsletter, isSupabaseConfigured } from '@/lib/supabase/queries';
 import { formatCompact, formatIDR } from '@/lib/utils';
 import { buildMetadata } from '@/lib/seo';
 
@@ -33,7 +33,7 @@ export default async function Home() {
   // the static landing without featured sections.
   const ready = isSupabaseConfigured();
   const featuredGigs    = ready ? (await getGigs()).slice(0, 3)    : [];
-  const featuredCourses = ready ? (await getCourses()).slice(0, 3) : [];
+  const featuredCourses = ready ? await getFeaturedCourses(6) : [];
   // Latest jobs for the "Lowongan Kerja Terbaru" strip — Full-Time & Contract
   // only (the homepage teases employment roles; Part-Time/Internship live on
   // /jobs). getJobs() is cached + newest-first, so this is a cheap filter.

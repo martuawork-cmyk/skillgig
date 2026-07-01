@@ -56,6 +56,20 @@ export function jobTypeColor(t: GigJobType): string {
   return JOB_TYPE_COLORS[t] ?? 'bg-slate-100 text-slate-700';
 }
 
+/**
+ * Compact IDR price for the CourseCard — "Rp 179rb" under 1 juta, "Rp 1,5jt"
+ * at/above 1 juta (one decimal, Indonesian comma). The caller renders a free
+ * course (0) as a separate GRATIS badge, so this assumes a non-zero amount.
+ */
+export function formatCoursePrice(amount: number): string {
+  if (amount >= 1_000_000) {
+    const jt = amount / 1_000_000;
+    const str = Number.isInteger(jt) ? String(jt) : jt.toFixed(1).replace('.', ',');
+    return `Rp ${str}jt`;
+  }
+  return `Rp ${Math.round(amount / 1000)}rb`;
+}
+
 export function formatCompact(n: number): string {
   return new Intl.NumberFormat('id-ID', {
     notation: 'compact',

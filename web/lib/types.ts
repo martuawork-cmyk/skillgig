@@ -142,6 +142,29 @@ export const COURSE_PLATFORMS: Record<CoursePlatform, string> = {
   YouTube:  'bg-rose-100 text-rose-700',
 };
 
+/**
+ * Emoji glyph per course platform — surfaced on the CourseCard next to the
+ * platform name. Keyed by string (not the `CoursePlatform` union) so platforms
+ * the DB may carry that aren't in the narrower union — edX, LinkedIn Learning,
+ * BuildWithAngga, Codepolitan — still resolve to a sensible icon instead of
+ * being silently dropped. Unknown platforms fall back to 📚.
+ */
+export const COURSE_PLATFORM_ICONS: Record<string, string> = {
+  Coursera: '🎓',
+  Udemy: '🟣',
+  edX: '⚡',
+  Dicoding: '🇮🇩',
+  'LinkedIn Learning': '💼',
+  BuildWithAngga: '🏗️',
+  Codepolitan: '💻',
+  YouTube: '▶️',
+};
+
+/** Resolve a platform name to its emoji, defaulting to 📚 when unknown. */
+export function coursePlatformIcon(platform: string): string {
+  return COURSE_PLATFORM_ICONS[platform] ?? '📚';
+}
+
 export const COURSE_CATEGORIES: { value: CourseCategory | 'all'; label: string }[] = [
   { value: 'all',       label: 'Semua' },
   { value: 'design',    label: 'Design' },

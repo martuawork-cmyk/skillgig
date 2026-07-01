@@ -118,6 +118,35 @@ export const getCourses = cached(
   ['courses'],
 );
 
+/**
+ * Admin-flagged featured courses for the homepage "Kursus populer" strip.
+ *
+ *   SELECT * FROM courses
+ *   WHERE featured = true
+ *   ORDER BY students DESC
+ *   LIMIT <limit>
+ *
+ * Ranked by student count so the most-taken featured course surfaces first.
+ * Returns an empty array when nothing is flagged featured — the homepage then
+ * hides the section, same as when Supabase isn't configured.
+ */
+export const getFeaturedCourses = cached(
+  async (limit: number = 6): Promise<Course[]> =>
+    safeQuery('getFeaturedCourses', async () => {
+      const sb = createPublicClient();
+      const { data, error } = await sb
+        .from('courses')
+        .select('*')
+        .eq('featured', true)
+        .order('students', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (data ?? []).map(mapCourseRow);
+    }, []),
+  ['getFeaturedCourses'],
+  ['courses'],
+);
+
 export async function getCourse(id: string): Promise<Course | null> {
   return safeQuery('getCourse', async () => {
     const sb = await createClient();
