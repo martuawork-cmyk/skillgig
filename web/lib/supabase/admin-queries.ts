@@ -119,6 +119,23 @@ async function fetchAffiliateClickCounts(
   return out;
 }
 
+/**
+ * Newest N courses by created_at — used on the dashboard "Kursus Terbaru"
+ * preview. Deliberately a plain SELECT off the table (no affiliate-click
+ * merge): the dashboard only needs title/platform/date for a 5-row preview,
+ * and analytics must never gate a read here.
+ */
+export async function adminLatestCourses(limit: number): Promise<Course[]> {
+  const sb = createAdminClient();
+  const { data, error } = await sb
+    .from('courses')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((r) => mapCourseRow(r as unknown as CourseRow));
+}
+
 export async function adminCreateCourse(input: CourseInput): Promise<Course> {
   const sb = createAdminClient();
   const row = {
@@ -466,6 +483,37 @@ export async function adminListSubscribersWithSkill(): Promise<SubscriberWithSki
     .from('subscribers')
     .select('id, email, skill_id, created_at, skills(name, category)')
     .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  type Row = {
+    id: string;
+    email: string;
+    skill_id: string | null;
+    created_at: string;
+    skills: { name: string; category: string } | null;
+  };
+
+  return ((data ?? []) as unknown as Row[]).map((r) => ({
+    id: r.id,
+    email: r.email,
+    skillId: r.skill_id,
+    createdAt: r.created_at,
+    skillName: r.skills?.name ?? null,
+    skillCategory: r.skills?.category ?? null,
+  }));
+}
+
+/**
+ * Newest N subscribers joined to their skill name — drives the dashboard
+ * "Subscriber Terbaru" preview (Email | Skill | Tanggal).
+ */
+export async function adminLatestSubscribers(limit: number): Promise<SubscriberWithSkill[]> {
+  const sb = createAdminClient();
+  const { data, error } = await sb
+    .from('subscribers')
+    .select('id, email, skill_id, created_at, skills(name, category)')
+    .order('created_at', { ascending: false })
+    .limit(limit);
   if (error) throw error;
 
   type Row = {

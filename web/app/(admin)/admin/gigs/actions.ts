@@ -89,6 +89,17 @@ export async function updateGigAction(
   if (!title) return { ok: false, error: 'Judul wajib diisi.' };
   if (!url) return { ok: false, error: 'URL wajib diisi.' };
 
+  // status is OPTIONAL on update: the redesigned GigForm sends it (so the
+  // "Publish" / "Simpan Draft" buttons can flip lifecycle), but the legacy
+  // EditGigForm does not include a status field. Only patch it when the form
+  // actually sent one — otherwise we would reset a published gig back to draft
+  // on every save from the old form.
+  const statusRaw = formData.get('status');
+  const status =
+    typeof statusRaw === 'string' && statusRaw !== ''
+      ? pickEnum(statusRaw, GIG_STATUSES, 'draft')
+      : undefined;
+
   try {
     await adminUpdateGig(id, {
       title,
@@ -101,6 +112,7 @@ export async function updateGigAction(
       description: String(formData.get('description') ?? '').trim(),
       skills: toStringArray(formData.get('skills')),
       durationWeeks: toPositiveInt(formData.get('durationWeeks'), 4),
+      status,
     });
     revalidatePath('/admin');
     revalidatePath('/admin/gigs');

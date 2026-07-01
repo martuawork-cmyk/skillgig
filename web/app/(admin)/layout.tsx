@@ -2,16 +2,16 @@ import Link from 'next/link';
 import { requireAdmin, isAdminConfigured } from '@/lib/supabase/admin';
 import { getCurrentUser } from '@/lib/supabase/session';
 import { isSupabaseConfigured } from '@/components/feedback/ErrorState';
-import { cn } from '@/lib/utils';
+import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { AdminHeader } from '@/components/admin/AdminHeader';
 
 export const dynamic = 'force-dynamic';
 
-const NAV: { href: string; label: string; icon: string }[] = [
-  { href: '/admin',              label: 'Dashboard',   icon: '📊' },
-  { href: '/admin/gigs',         label: 'Gigs',        icon: '🛠️' },
-  { href: '/admin/courses',      label: 'Kursus',      icon: '📚' },
-  { href: '/admin/subscribers',  label: 'Subscribers', icon: '✉️' },
-];
+// Plus Jakarta Sans is loaded in the root layout and exposed as the
+// `--font-jakarta` CSS variable. The admin workspace opts in here so the
+// marketing site keeps Inter while admin uses Jakarta throughout.
+const JAKARTA_FONT =
+  'var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, sans-serif';
 
 /**
  * Admin route group shell.
@@ -22,9 +22,10 @@ const NAV: { href: string; label: string; icon: string }[] = [
  *   - redirects to / when the user is signed in but lacks role='admin' in
  *     auth.users.raw_user_meta_data
  *
- * The layout renders a sidebar + main area. The site-wide Header / Footer are
- * intentionally NOT included — admin is a focused workspace and shouldn't
- * carry marketing navigation.
+ * The shell is a fixed 260px sidebar (logo, nav, user + logout) plus a right
+ * column with a sticky 64px header (breadcrumb + user menu) and an independently
+ * scrolling content area. The site-wide Header / JourneyNav / Footer are kept
+ * off admin pages via `SiteChrome` in the root layout.
  */
 export default async function AdminLayout({
   children,
@@ -40,7 +41,10 @@ export default async function AdminLayout({
   // instead of seeing this setup fallback. Keep both checks.
   if (!isSupabaseConfigured() || !isAdminConfigured()) {
     return (
-      <div className="min-h-[60vh] grid place-items-center px-4">
+      <div
+        className="min-h-[60vh] grid place-items-center px-4"
+        style={{ fontFamily: JAKARTA_FONT }}
+      >
         <div className="max-w-md text-center">
           <p className="text-3xl mb-2">🛡️</p>
           <h1 className="text-lg font-bold text-slate-900">Admin belum tersedia</h1>
@@ -66,96 +70,25 @@ export default async function AdminLayout({
 
   // If the public.users profile hasn't been populated yet (e.g. admin was
   // granted through auth metadata but the trigger hasn't run), fall back to
-  // the auth email so the sidebar still has a name to show.
+  // the auth identity so the sidebar still has a name to show.
   const profile = await getCurrentUser();
   const displayName = profile?.name ?? user.name ?? 'Admin';
   const initials = profile?.initials ?? user.initials ?? 'AD';
 
+  const adminUser = { name: displayName, initials };
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="flex flex-col lg:flex-row min-h-screen">
-        {/* Sidebar */}
-        <aside className="lg:w-64 lg:shrink-0 bg-white border-b lg:border-b-0 lg:border-r border-slate-200">
-          <div className="px-5 py-5 border-b border-slate-100">
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 grid place-items-center shadow-soft">
-                <span className="text-white font-extrabold text-sm">SG</span>
-              </div>
-              <div className="leading-tight">
-                <p className="font-extrabold text-slate-900 tracking-tight text-base">
-                  SkillGig<span className="text-indigo-600">.id</span>
-                </p>
-                <p className="text-[10px] text-slate-500 -mt-0.5 uppercase tracking-wide font-bold">
-                  Admin
-                </p>
-              </div>
-            </Link>
-          </div>
+    <div className="min-h-screen bg-slate-50" style={{ fontFamily: JAKARTA_FONT }}>
+      {/* Fixed left sidebar — pinned to the viewport, does not scroll. */}
+      <AdminSidebar user={adminUser} />
 
-          <nav className="px-3 py-4 space-y-1">
-            {NAV.map((item) => (
-              <AdminNavLink key={item.href} item={item} />
-            ))}
-          </nav>
-
-          <div className="px-5 py-4 mt-4 border-t border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 grid place-items-center font-bold text-xs">
-                {initials.slice(0, 2).toUpperCase()}
-              </div>
-              <div className="leading-tight min-w-0">
-                <p className="text-sm font-semibold text-slate-900 truncate">
-                  {displayName}
-                </p>
-                <p className="text-[11px] text-slate-500">Administrator</p>
-              </div>
-            </div>
-            <form action="/api/auth/signout" method="post" className="mt-3">
-              <button
-                type="submit"
-                className="w-full text-left text-xs font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 px-2 py-1.5 rounded-md transition"
-              >
-                Keluar
-              </button>
-            </form>
-          </div>
-        </aside>
-
-        {/* Main */}
-        <main className="flex-1 min-w-0">
-          <header className="bg-white border-b border-slate-200 px-5 sm:px-8 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-xs uppercase tracking-wide font-bold text-slate-500">
-                Admin Console
-              </p>
-              <Link
-                href="/"
-                className="text-xs font-semibold text-slate-500 hover:text-indigo-600"
-              >
-                ← Lihat situs publik
-              </Link>
-            </div>
-          </header>
-          <div className="px-5 sm:px-8 py-6 sm:py-8">{children}</div>
-        </main>
+      {/* Right column: offset by the 260px sidebar, full viewport height so the
+          header stays put while only the content area scrolls. */}
+      <div className="ml-[260px] flex h-screen flex-col">
+        <AdminHeader user={adminUser} />
+        {/* flex-1 after the 64px header == calc(100vh - 64px); scrolls on its own. */}
+        <main className="flex-1 overflow-y-auto bg-slate-50 p-6">{children}</main>
       </div>
     </div>
-  );
-}
-
-function AdminNavLink({ item }: { item: { href: string; label: string; icon: string } }) {
-  return (
-    <Link
-      href={item.href}
-      className={cn(
-        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600',
-        'hover:bg-slate-50 hover:text-indigo-600 transition',
-      )}
-    >
-      <span aria-hidden className="text-base">
-        {item.icon}
-      </span>
-      <span>{item.label}</span>
-    </Link>
   );
 }

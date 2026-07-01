@@ -1,14 +1,22 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
-import { Header } from '@/components/layout/Header';
-import { JourneyNav } from '@/components/layout/JourneyNav';
-import { Footer } from '@/components/layout/Footer';
+import { SiteChrome } from '@/components/layout/SiteChrome';
 import { SavedHydrator } from '@/components/system/SavedHydrator';
 import { getCurrentUser } from '@/lib/supabase/session';
 import { getSiteMetadata } from '@/lib/seo';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+
+// Plus Jakarta Sans is the admin workspace typeface. We expose it as a CSS
+// variable here (available to every route) and the admin shell opts into it via
+// `var(--font-jakarta)` — public pages keep Inter, so this does not change the
+// look of the marketing site.
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-jakarta',
+});
 
 // Default SEO + social metadata for the whole site. Per-page metadata built
 // via `buildMetadata()` in lib/seo.ts overrides these.
@@ -39,12 +47,9 @@ export default async function RootLayout({
     : null;
 
   return (
-    <html lang="id" className={inter.variable}>
+    <html lang="id" className={`${inter.variable} ${jakarta.variable}`}>
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
-        <Header user={headerUser} />
-        <JourneyNav />
-        <main>{children}</main>
-        <Footer />
+        <SiteChrome user={headerUser}>{children}</SiteChrome>
         <SavedHydrator />
       </body>
     </html>
