@@ -5,6 +5,7 @@ import { SiteChrome } from '@/components/layout/SiteChrome';
 import { SavedHydrator } from '@/components/system/SavedHydrator';
 import { getCurrentUser } from '@/lib/supabase/session';
 import { getSiteMetadata } from '@/lib/seo';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -51,6 +52,7 @@ export default async function RootLayout({
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
         <SiteChrome user={headerUser}>{children}</SiteChrome>
         <SavedHydrator />
+        <SpeedInsights />
       </body>
     </html>
   );
