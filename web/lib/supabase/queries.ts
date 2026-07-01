@@ -794,3 +794,34 @@ export async function getHomepageStats(): Promise<HomepageStats> {
     };
   }, { totalGigs: 0, totalUsers: 0, avgBudgetMax: null });
 }
+
+// ============================================================================
+// About page stats — real counts of courses, gigs, and registered users for
+// the "SkillGig dalam angka" strip on /about. Falls back to zeros when
+// Supabase is not configured / unreachable so the page still renders.
+// ============================================================================
+
+export interface AboutStats {
+  totalCourses: number;
+  totalGigs: number;
+  totalUsers: number;
+}
+
+export async function getAboutStats(): Promise<AboutStats> {
+  return safeQuery('getAboutStats', async () => {
+    const sb = createPublicClient();
+    const [courses, gigs, users] = await Promise.all([
+      sb.from('courses').select('*', { count: 'exact', head: true }),
+      sb.from('gigs').select('*', { count: 'exact', head: true }).eq('status', 'published'),
+      sb.from('users').select('*', { count: 'exact', head: true }),
+    ]);
+    if (courses.error) throw courses.error;
+    if (gigs.error) throw gigs.error;
+    if (users.error) throw users.error;
+    return {
+      totalCourses: courses.count ?? 0,
+      totalGigs: gigs.count ?? 0,
+      totalUsers: users.count ?? 0,
+    };
+  }, { totalCourses: 0, totalGigs: 0, totalUsers: 0 });
+}
