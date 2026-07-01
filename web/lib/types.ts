@@ -14,6 +14,14 @@ export type ApplicationStatus = 'pending' | 'reviewed' | 'accepted' | 'rejected'
 
 export type GigStatus = 'draft' | 'published' | 'expired';
 
+/** Employment type for real job postings (seed-gigs-real.sql `job_type`). */
+export type GigJobType =
+  | 'Full-Time'
+  | 'Contract'
+  | 'Part-Time'
+  | 'Freelance'
+  | 'Internship';
+
 export interface Gig {
   id: string;
   title: string;
@@ -23,7 +31,9 @@ export interface Gig {
   category: GigCategory;
   budgetMin: number; // IDR
   budgetMax: number; // IDR
-  durationWeeks: number;
+  /** Project duration in weeks. `null` for open-ended roles (e.g. Full-Time
+   *  salaried postings that have no fixed project window). */
+  durationWeeks: number | null;
   level: SkillLevel;
   skillsRequired: string[];
   clientId: string;
@@ -34,7 +44,40 @@ export interface Gig {
   /** Lifecycle status controlled by the admin layer. Defaults to 'published'
    *  for legacy rows that pre-date migration 007. */
   status: GigStatus;
+  /**
+   * Real-content fields backed by seed-gigs-real.sql columns. All are optional
+   * on the type because the columns were added idempotently (legacy / mock
+   * rows may pre-date them); `mapGigRow` always populates them when present.
+   */
+  company?: string | null;
+  company_logo?: string | null;
+  jobType?: GigJobType | null;
+  location?: string;
+  isRemote?: boolean;
+  /** Salary floor / ceiling. Mirror `budgetMin` / `budgetMax` — the SQL keeps
+   *  a single `budget_min`/`budget_max` pair that doubles as the salary range. */
+  salaryMin?: number;
+  salaryMax?: number;
+  salaryCurrency?: string;
 }
+
+/** Pill options for the "Tipe Kerja" filter on /gigs. */
+export const JOB_TYPES: { value: GigJobType; label: string }[] = [
+  { value: 'Full-Time',  label: 'Full-Time' },
+  { value: 'Contract',   label: 'Contract' },
+  { value: 'Part-Time',  label: 'Part-Time' },
+  { value: 'Freelance',  label: 'Freelance' },
+  { value: 'Internship', label: 'Internship' },
+];
+
+/** Badge colour per job type (Tailwind classes). */
+export const JOB_TYPE_COLORS: Record<GigJobType, string> = {
+  'Full-Time':  'bg-green-100 text-green-700',
+  'Contract':   'bg-blue-100 text-blue-700',
+  'Part-Time':  'bg-purple-100 text-purple-700',
+  'Freelance':  'bg-orange-100 text-orange-700',
+  'Internship': 'bg-yellow-100 text-yellow-700',
+};
 
 export type GigPlatform =
   | 'Upwork'
@@ -83,7 +126,7 @@ export interface Course {
 
 export type CoursePlatform = 'Udemy' | 'Coursera' | 'Dicoding' | 'YouTube';
 
-export type CourseCategory = 'design' | 'tech' | 'marketing';
+export type CourseCategory = 'design' | 'tech' | 'marketing' | 'data' | 'video' | 'writing';
 
 export const COURSE_PLATFORMS: Record<CoursePlatform, string> = {
   Udemy:    'bg-purple-100 text-purple-700',
@@ -97,6 +140,9 @@ export const COURSE_CATEGORIES: { value: CourseCategory | 'all'; label: string }
   { value: 'design',    label: 'Design' },
   { value: 'tech',      label: 'Tech' },
   { value: 'marketing', label: 'Marketing' },
+  { value: 'data',      label: 'Data' },
+  { value: 'video',     label: 'Video' },
+  { value: 'writing',   label: 'Writing' },
 ];
 
 export interface Skill {

@@ -6,14 +6,17 @@ import { Badge } from '@/components/ui/Badge';
 import { Tag } from '@/components/ui/Tag';
 import { Avatar } from '@/components/ui/Avatar';
 import { ApplyForm } from '@/components/gig/ApplyForm';
+import { LamarButton } from '@/components/gig/LamarButton';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { getGig, getUser, hasAppliedToGig, isSupabaseConfigured } from '@/lib/supabase/queries';
 import { getCurrentUser } from '@/lib/supabase/session';
 import {
   formatIDR,
+  formatBudget,
   timeAgo,
   categoryColor,
   categoryLabel,
+  jobTypeColor,
   levelColor,
   levelLabel,
 } from '@/lib/utils';
@@ -51,7 +54,9 @@ export async function generateMetadata({
     const description =
       gig.descriptionId && gig.descriptionId.length > 0
         ? gig.descriptionId.slice(0, 160)
-        : `Lowongan freelance: ${gig.titleId}. Budget ${formatIDR(gig.budgetMin)} – ${formatIDR(gig.budgetMax)}, durasi ${gig.durationWeeks} minggu.`;
+        : `Lowongan freelance: ${gig.titleId}. Budget ${formatIDR(gig.budgetMin)} – ${formatIDR(gig.budgetMax)}, durasi ${
+            gig.durationWeeks != null ? `${gig.durationWeeks} minggu` : (gig.jobType ?? 'Full-Time')
+          }.`;
 
     return buildMetadata({
       title,
@@ -107,6 +112,9 @@ export default async function GigDetailPage({
                 <Badge className={categoryColor(gig.category)}>
                   {categoryLabel(gig.category)}
                 </Badge>
+                {gig.jobType && (
+                  <Badge className={jobTypeColor(gig.jobType)}>{gig.jobType}</Badge>
+                )}
                 <Badge className={levelColor(gig.level)}>
                   {levelLabel(gig.level)}
                 </Badge>
@@ -122,11 +130,36 @@ export default async function GigDetailPage({
                 <p className="text-sm text-slate-500 mt-1 italic">
                   EN: {gig.title}
                 </p>
+                {(gig.company || gig.company_logo || gig.location) && (
+                  <p className="text-sm text-slate-600 mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    {gig.company_logo && <span aria-hidden>{gig.company_logo}</span>}
+                    {gig.company && <span className="font-semibold text-slate-700">{gig.company}</span>}
+                    {gig.location && (
+                      <span className="text-slate-500">
+                        · {gig.isRemote === false ? `${gig.location} (On-site)` : gig.location}
+                      </span>
+                    )}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <Stat label="Budget" value={`${formatIDR(gig.budgetMin)} – ${formatIDR(gig.budgetMax)}`} />
-                <Stat label="Durasi" value={`${gig.durationWeeks} minggu`} />
+                <Stat
+                  label="Salary"
+                  value={formatBudget(
+                    gig.salaryMin ?? gig.budgetMin,
+                    gig.salaryMax ?? gig.budgetMax,
+                    gig.salaryCurrency ?? 'IDR',
+                  )}
+                />
+                <Stat
+                  label="Durasi"
+                  value={
+                    gig.durationWeeks != null
+                      ? `${gig.durationWeeks} minggu`
+                      : (gig.jobType ?? 'Full-Time')
+                  }
+                />
                 <Stat label="Level" value={levelLabel(gig.level)} />
                 <Stat label="Pelamar" value={`${gig.applicantsCount}`} />
               </div>
@@ -191,7 +224,17 @@ export default async function GigDetailPage({
         </div>
 
         <aside className="lg:col-span-1">
-          <div className="lg:sticky lg:top-32">
+          <div className="lg:sticky lg:top-32 space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
+              <p className="text-xs font-semibold text-slate-500 mb-2">
+                Lamar di platform asli
+              </p>
+              <LamarButton url={gig.url} label="Lamar Sekarang" />
+              <p className="text-[10px] text-slate-400 mt-2 text-center">
+                Membuka listing di {gig.platform} di tab baru.
+              </p>
+            </div>
+
             <ApplyForm
             gigId={gig.id}
             isAuthed={Boolean(currentUser)}

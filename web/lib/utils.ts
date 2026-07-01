@@ -1,7 +1,7 @@
 // SkillGig.id — small utilities
 
-import type { GigCategory, SkillLevel, ApplicationStatus } from './types';
-import { CATEGORIES, LEVELS } from './types';
+import type { GigCategory, GigJobType, SkillLevel, ApplicationStatus } from './types';
+import { CATEGORIES, LEVELS, JOB_TYPE_COLORS } from './types';
 
 export function cn(...classes: Array<string | false | undefined | null>): string {
   return classes.filter(Boolean).join(' ');
@@ -13,6 +13,26 @@ export function formatIDR(amount: number): string {
     currency: 'IDR',
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+/**
+ * Format a salary / budget range with the right currency prefix.
+ *   USD → "USD 500 – 1.000"        (dot thousands separator, single prefix)
+ *   IDR → "Rp 5.000.000 – Rp 15.000.000"  (formatIDR on each bound)
+ * Any other / missing currency falls back to IDR formatting.
+ */
+export function formatBudget(min: number, max: number, currency: string): string {
+  const dash = ' – ';
+  if (currency === 'USD') {
+    const fmt = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
+    return `USD ${fmt.format(min)}${dash}${fmt.format(max)}`;
+  }
+  return `${formatIDR(min)}${dash}${formatIDR(max)}`;
+}
+
+/** Tailwind badge classes for a given job type. */
+export function jobTypeColor(t: GigJobType): string {
+  return JOB_TYPE_COLORS[t] ?? 'bg-slate-100 text-slate-700';
 }
 
 export function formatCompact(n: number): string {

@@ -132,13 +132,15 @@ export async function getCourse(id: string): Promise<Course | null> {
 }
 
 export const getGigs = cached(
-  async (): Promise<Gig[]> =>
+  async (jobType?: string): Promise<Gig[]> =>
     safeQuery('getGigs', async () => {
       const sb = createPublicClient();
-      const { data, error } = await sb
-        .from('gigs')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let query = sb.from('gigs').select('*');
+      // Optional "Tipe Kerja" filter — applied server-side so the shareable
+      // ?job_type= URL reflects the actual result set. unstable_cache keys on
+      // the fn args, so each jobType value is cached independently.
+      if (jobType) query = query.eq('job_type', jobType);
+      const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []).map(mapGigRow);
     }, []),

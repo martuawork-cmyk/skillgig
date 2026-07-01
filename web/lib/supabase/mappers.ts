@@ -13,6 +13,7 @@ import type {
   CoursePlatform,
   Gig,
   GigCategory,
+  GigJobType,
   GigPlatform,
   GigStatus,
   Skill,
@@ -27,7 +28,14 @@ const COURSE_PLATFORMS: ReadonlySet<string> = new Set([
   'Dicoding',
   'YouTube',
 ]);
-const COURSE_CATEGORIES: ReadonlySet<string> = new Set(['design', 'tech', 'marketing']);
+const COURSE_CATEGORIES: ReadonlySet<string> = new Set([
+  'design',
+  'tech',
+  'marketing',
+  'data',
+  'video',
+  'writing',
+]);
 const GIG_CATEGORIES: ReadonlySet<string> = new Set([
   'web-dev',
   'design',
@@ -41,6 +49,13 @@ const GIG_PLATFORMS: ReadonlySet<string> = new Set([
   'Fiverr',
   'Projects.co.id',
   'Sribulancer',
+]);
+const GIG_JOB_TYPES: ReadonlySet<string> = new Set([
+  'Full-Time',
+  'Contract',
+  'Part-Time',
+  'Freelance',
+  'Internship',
 ]);
 const GIG_STATUSES: ReadonlySet<string> = new Set(['draft', 'published', 'expired']);
 const SKILL_LEVELS: ReadonlySet<string> = new Set([
@@ -67,6 +82,17 @@ export function asGigCategory(s: string): GigCategory {
 }
 export function asGigPlatform(s: string): GigPlatform {
   return (GIG_PLATFORMS.has(s) ? s : 'Upwork') as GigPlatform;
+}
+/**
+ * Cast a SQL gig.job_type string into the GigJobType union. Returns null for
+ * unknown / missing values — legacy rows (pre seed-gigs-real.sql) have no
+ * job_type column populated, and the column itself is nullable.
+ */
+export function asGigJobType(s: string | null | undefined): GigJobType | null {
+  if (s && (GIG_JOB_TYPES as ReadonlySet<string>).has(s)) {
+    return s as GigJobType;
+  }
+  return null;
 }
 /**
  * Cast a SQL gig.status string into the GigStatus union. Defaults to
@@ -117,10 +143,18 @@ export type GigRow = {
   level: string;
   description: string;
   skills: string[] | null;
-  duration_weeks: number;
+  /** Nullable since seed-gigs-real.sql drops the NOT NULL for Full-Time rows. */
+  duration_weeks: number | null;
   applicants_count: number;
   created_at: string;
   status: string;
+  /* Columns added idempotently by seed-gigs-real.sql — absent on legacy rows. */
+  company?: string | null;
+  company_logo?: string | null;
+  job_type?: string | null;
+  location?: string | null;
+  is_remote?: boolean | null;
+  salary_currency?: string | null;
 };
 
 export type SkillRow = {
@@ -195,7 +229,8 @@ export function mapGigRow(r: GigRow): Gig {
     category: asGigCategory(r.category),
     budgetMin: r.budget_min,
     budgetMax: r.budget_max,
-    durationWeeks: r.duration_weeks,
+    // null-safe: Full-Time salaried rows have no fixed project window.
+    durationWeeks: r.duration_weeks ?? null,
     level: asSkillLevel(r.level),
     skillsRequired: r.skills ?? [],
     clientId: '',
@@ -204,6 +239,16 @@ export function mapGigRow(r: GigRow): Gig {
     platform: asGigPlatform(r.platform),
     url: r.url,
     status: asGigStatus(r.status),
+    company: r.company ?? null,
+    company_logo: r.company_logo ?? null,
+    jobType: asGigJobType(r.job_type),
+    location: r.location ?? '',
+    isRemote: r.is_remote ?? true,
+    // salaryMin/salaryMax alias the budget columns — seed-gigs-real.sql keeps
+    // a single budget_min/budget_max pair that doubles as the salary range.
+    salaryMin: r.budget_min,
+    salaryMax: r.budget_max,
+    salaryCurrency: r.salary_currency ?? 'IDR',
   };
 }
 

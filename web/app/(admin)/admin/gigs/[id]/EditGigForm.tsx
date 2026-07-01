@@ -104,7 +104,7 @@ export function EditGigForm({ gig }: { gig: Gig }) {
           name="durationWeeks"
           type="number"
           min={1}
-          defaultValue={gig.durationWeeks}
+          defaultValue={gig.durationWeeks ?? ''}
           className={inputCls}
         />
       </Field>

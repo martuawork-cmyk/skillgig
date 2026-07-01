@@ -1,19 +1,35 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardBody } from '@/components/ui/Card';
 import { StatsGrid } from '@/components/ui/StatsGrid';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FilterPills } from '@/components/ui/FilterPills';
 import { GigCard } from '@/components/gig/GigCard';
-import { CATEGORIES, LEVELS, type GigCategory, type SkillLevel } from '@/lib/types';
+import {
+  CATEGORIES,
+  LEVELS,
+  JOB_TYPES,
+  type GigCategory,
+  type GigJobType,
+  type SkillLevel,
+} from '@/lib/types';
 import type { Gig } from '@/lib/types';
 import { useSavedStore } from '@/lib/store/savedStore';
 import { cn } from '@/lib/utils';
 
 type Sort = 'newest' | 'budget-high' | 'budget-low' | 'applicants';
 
-export function GigsClient({ initialGigs }: { initialGigs: Gig[] }) {
+export function GigsClient({
+  initialGigs,
+  activeJobType = 'all',
+}: {
+  initialGigs: Gig[];
+  /** Server-driven (URL ?job_type=) job-type filter — see /gigs page. */
+  activeJobType?: GigJobType | 'all';
+}) {
+  const router = useRouter();
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<GigCategory | 'all'>('all');
   const [level, setLevel] = useState<SkillLevel | 'all'>('all');
@@ -53,13 +69,24 @@ export function GigsClient({ initialGigs }: { initialGigs: Gig[] }) {
     return list;
   }, [initialGigs, q, cat, level, sort]);
 
+  // The job-type filter is URL-driven (shareable ?job_type=) and resolved
+  // server-side, so changing it navigates rather than mutating local state.
+  // 'all' clears the param.
+  function onChangeJobType(value: GigJobType | 'all') {
+    router.push(value === 'all' ? '/gigs' : `/gigs?job_type=${encodeURIComponent(value)}`);
+  }
+
   function reset() {
     setQ(''); setCat('all'); setLevel('all'); setSort('newest');
+    if (activeJobType !== 'all') router.push('/gigs');
   }
 
   // How many non-default filters are active — shown as a badge on the mobile
   // toggle so users know filters are applied while the panel is collapsed.
-  const activeCount = (cat !== 'all' ? 1 : 0) + (level !== 'all' ? 1 : 0);
+  const activeCount =
+    (cat !== 'all' ? 1 : 0) +
+    (level !== 'all' ? 1 : 0) +
+    (activeJobType !== 'all' ? 1 : 0);
 
   // Stats
   const totalGigs = initialGigs.length;
@@ -181,6 +208,20 @@ export function GigsClient({ initialGigs }: { initialGigs: Gig[] }) {
                   active={level}
                   onChange={setLevel}
                   ariaLabel="Filter gigs berdasarkan level"
+                  className="flex-col items-stretch [&>button]:w-full [&>button]:text-left"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-slate-100">
+                <h2 className="text-sm font-bold text-slate-900 mb-2">Tipe Kerja</h2>
+                <FilterPills<GigJobType | 'all'>
+                  items={[
+                    { value: 'all', label: 'Semua' },
+                    ...JOB_TYPES.map((j) => ({ value: j.value, label: j.label })),
+                  ]}
+                  active={activeJobType}
+                  onChange={onChangeJobType}
+                  ariaLabel="Filter gigs berdasarkan tipe kerja"
                   className="flex-col items-stretch [&>button]:w-full [&>button]:text-left"
                 />
               </div>

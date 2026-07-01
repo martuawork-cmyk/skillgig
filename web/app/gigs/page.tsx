@@ -3,6 +3,7 @@ import { GigsClient } from '@/components/gig/GigsClient';
 import { getGigs, isSupabaseConfigured } from '@/lib/supabase/queries';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { buildMetadata } from '@/lib/seo';
+import { JOB_TYPES, type GigJobType } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,22 @@ export const metadata: Metadata = buildMetadata({
   path: '/gigs',
 });
 
-export default async function GigsPage() {
+/**
+ * Validate the ?job_type= search param against the known set so an unknown /
+ * garbage value can't be passed straight into the Supabase `.eq()` filter.
+ * Returns the validated job type or undefined (no filter).
+ */
+function readJobType(raw: string | string[] | undefined): GigJobType | undefined {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof value !== 'string') return undefined;
+  return JOB_TYPES.some((j) => j.value === value) ? (value as GigJobType) : undefined;
+}
+
+export default async function GigsPage({
+  searchParams,
+}: {
+  searchParams: { job_type?: string | string[] };
+}) {
   if (!isSupabaseConfigured()) {
     return (
       <PageShell>
@@ -26,9 +42,12 @@ export default async function GigsPage() {
     );
   }
 
-  const gigs = await getGigs();
+  const jobType = readJobType(searchParams.job_type);
+  const gigs = await getGigs(jobType);
 
-  if (gigs.length === 0) {
+  // Only treat an empty table as an error when no filter is active — an empty
+  // *filtered* result is handled by GigsClient's "no matches" empty state.
+  if (!jobType && gigs.length === 0) {
     return (
       <PageShell>
         <ErrorState
@@ -42,7 +61,7 @@ export default async function GigsPage() {
 
   return (
     <PageShell>
-      <GigsClient initialGigs={gigs} />
+      <GigsClient initialGigs={gigs} activeJobType={jobType ?? 'all'} />
     </PageShell>
   );
 }
