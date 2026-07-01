@@ -7,7 +7,7 @@ import { Tag } from '@/components/ui/Tag';
 import { useToast, Toast } from '@/components/ui/Toast';
 import type { Gig } from '@/lib/types';
 import {
-  formatBudget,
+  formatSalaryRange,
   timeAgo,
   categoryColor,
   categoryLabel,
@@ -69,6 +69,9 @@ export function GigCard({ gig }: Props) {
               {gig.jobType && (
                 <Badge className={jobTypeColor(gig.jobType)}>{gig.jobType}</Badge>
               )}
+              {gig.isRemote && (
+                <Badge className="bg-emerald-100 text-emerald-700">Remote</Badge>
+              )}
             </div>
             <Badge className={levelColor(gig.level)}>
               {levelLabel(gig.level)}
@@ -110,7 +113,7 @@ export function GigCard({ gig }: Props) {
                 Salary
               </p>
               <p className="font-bold text-slate-900 text-sm truncate">
-                {formatBudget(
+                {formatSalaryRange(
                   gig.salaryMin ?? gig.budgetMin,
                   gig.salaryMax ?? gig.budgetMax,
                   gig.salaryCurrency ?? 'IDR',

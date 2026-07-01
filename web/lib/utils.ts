@@ -30,6 +30,27 @@ export function formatBudget(min: number, max: number, currency: string): string
   return `${formatIDR(min)}${dash}${formatIDR(max)}`;
 }
 
+/**
+ * Compact *monthly* salary range for the GigCard — tighter than `formatBudget`
+ * (used on the gig detail page, which has room for the full figures).
+ *   USD → "USD 500–1.000/bln"
+ *   IDR → "Rp 5jt–15jt/bln"
+ *
+ * IDR values ≥ 1 juta collapse to "Njt"; anything smaller keeps its full IDR
+ * form so Rp 500.000 doesn't render as the meaningless "Rp 0jt". Unknown
+ * currencies fall back to the IDR branch.
+ */
+export function formatSalaryRange(min: number, max: number, currency: string): string {
+  const dash = '–';
+  if (currency === 'USD') {
+    const fmt = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
+    return `USD ${fmt.format(min)}${dash}${fmt.format(max)}/bln`;
+  }
+  const toJt = (n: number) =>
+    n >= 1_000_000 ? `${Math.round(n / 1_000_000)}jt` : formatIDR(n);
+  return `Rp ${toJt(min)}${dash}${toJt(max)}/bln`;
+}
+
 /** Tailwind badge classes for a given job type. */
 export function jobTypeColor(t: GigJobType): string {
   return JOB_TYPE_COLORS[t] ?? 'bg-slate-100 text-slate-700';
