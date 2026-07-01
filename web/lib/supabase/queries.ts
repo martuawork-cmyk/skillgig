@@ -148,6 +148,30 @@ export const getGigs = cached(
   ['gigs'],
 );
 
+/**
+ * Jobs board (/jobs) — real employment roles only (Full-Time, Contract,
+ * Part-Time, Internship). Freelance is excluded on purpose; it lives on /gigs.
+ *
+ * Mirrors `getGigs` but filters server-side via `.in('job_type', …)` so the
+ * /jobs board never pulls freelance project posts. Cached like the other
+ * catalog reads (1h, tagged 'gigs' so admin mutations bust it too).
+ */
+export const getJobs = cached(
+  async (): Promise<Gig[]> =>
+    safeQuery('getJobs', async () => {
+      const sb = createPublicClient();
+      const { data, error } = await sb
+        .from('gigs')
+        .select('*')
+        .in('job_type', ['Full-Time', 'Contract', 'Part-Time', 'Internship'])
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(mapGigRow);
+    }, []),
+  ['getJobs'],
+  ['gigs'],
+);
+
 export async function getGig(id: string): Promise<Gig | null> {
   return safeQuery('getGig', async () => {
     const sb = await createClient();

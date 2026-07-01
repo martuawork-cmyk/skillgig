@@ -3,9 +3,10 @@ import type { Metadata } from 'next';
 import { Card, CardBody } from '@/components/ui/Card';
 import { ButtonLink } from '@/components/ui/Button';
 import { GigCard } from '@/components/gig/GigCard';
+import { JobCard } from '@/components/job/JobCard';
 import { CourseCard } from '@/components/course/CourseCard';
 import { NewsletterSection } from '@/components/newsletter/NewsletterSection';
-import { getCourses, getGigs, getHomepageStats, getSkillsForNewsletter, isSupabaseConfigured } from '@/lib/supabase/queries';
+import { getCourses, getGigs, getJobs, getHomepageStats, getSkillsForNewsletter, isSupabaseConfigured } from '@/lib/supabase/queries';
 import { formatCompact, formatIDR } from '@/lib/utils';
 import { buildMetadata } from '@/lib/seo';
 
@@ -33,6 +34,14 @@ export default async function Home() {
   const ready = isSupabaseConfigured();
   const featuredGigs    = ready ? (await getGigs()).slice(0, 3)    : [];
   const featuredCourses = ready ? (await getCourses()).slice(0, 3) : [];
+  // Latest jobs for the "Lowongan Kerja Terbaru" strip — Full-Time & Contract
+  // only (the homepage teases employment roles; Part-Time/Internship live on
+  // /jobs). getJobs() is cached + newest-first, so this is a cheap filter.
+  const featuredJobs = ready
+    ? (await getJobs())
+        .filter((g) => g.jobType === 'Full-Time' || g.jobType === 'Contract')
+        .slice(0, 4)
+    : [];
   const stats = ready ? await getHomepageStats() : { totalGigs: 0, totalUsers: 0, avgBudgetMax: null };
   // Newsletter dropdown options. Falls back to an empty list when Supabase
   // isn't reachable — the client component then renders its own error state
@@ -151,6 +160,30 @@ export default async function Home() {
           </div>
         )}
       </section>
+
+      {/* Latest Jobs */}
+      {featuredJobs.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-end justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                💼 Lowongan Kerja Terbaru
+              </h2>
+              <p className="text-sm text-slate-600 mt-1">
+                Lowongan Full-Time &amp; Contract dari perusahaan global
+              </p>
+            </div>
+            <Link href="/jobs" className="text-sm font-semibold text-indigo-600 hover:underline">
+              Lihat semua lowongan →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {featuredJobs.map((g) => (
+              <JobCard key={g.id} gig={g} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Featured Courses */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
