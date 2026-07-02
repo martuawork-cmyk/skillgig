@@ -158,3 +158,103 @@ export async function notifyJobApproved(p: JobApprovedPayload): Promise<boolean>
   if (!isTelegramConfigured()) return false;
   return sendTelegramMessage(buildJobApprovedMessage(p));
 }
+
+// =============================================================================
+// Cron sync completion notification.
+// -----------------------------------------------------------------------------
+// Fired at the end of the job-sync cron (lib/job-sync/cron-handler.ts) when a
+// run added at least one new gig. Gives the admin/moderation team a heads-up
+// that fresh listings just landed — same channel, same best-effort semantics as
+// the approval ping: a silent no-op when unconfigured, and it never throws back
+// into the cron (a Telegram outage must never turn a successful sync into a
+// failed cron response).
+// =============================================================================
+
+/**
+ * Per-source counts surfaced in the cron-completion message. Structurally
+ * compatible with cron-handler's SourceStats — extra fields there (e.g.
+ * `skipped`) are harmless, we only read added/updated/error.
+ */
+export interface SyncSourceStats {
+  added: number;
+  updated: number;
+  /** Set only when the whole source fatally threw this run. */
+  error?: string;
+}
+
+/** Adzuna additionally reports per-row upsert errors. */
+export interface SyncAdzunaStats extends SyncSourceStats {
+  errors: number;
+}
+
+/** Payload for notifyNewGigsSynced(). */
+export interface GigsSyncedPayload {
+  remotive?: SyncSourceStats;
+  adzuna?: SyncAdzunaStats;
+}
+
+/**
+ * Format a Date as a readable WIB (Asia/Jakarta, UTC+7) stamp, e.g.
+ * "3 Jul 2026, 14.30 WIB". Cron timestamps are UTC otherwise; surfacing WIB
+ * keeps the message scannable for an Indonesia-based admin.
+ */
+function formatWIB(date: Date): string {
+  return (
+    new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(date) + ' WIB'
+  );
+}
+
+/**
+ * One source line for the sync message, or null when that source didn't run.
+ * `tail` carries source-specific suffixes (Adzuna's per-row error count) so the
+ * base shape stays shared. A fatally-errored source shows ⚠️ instead of counts.
+ */
+function syncSourceLine(
+  name: string,
+  stats: SyncSourceStats | undefined,
+  tail: string,
+): string | null {
+  if (!stats) return null;
+  if (stats.error) return `${name}: ⚠️ gagal`;
+  return `${name}: +${stats.added} baru, ${stats.updated} update${tail}`;
+}
+
+/**
+ * Build the cron-sync message body (HTML). Exported so it can be unit-tested
+ * without going to the network.
+ */
+export function buildNewGigsSyncedMessage(stats: GigsSyncedPayload): string {
+  const totalAdded = (stats.remotive?.added ?? 0) + (stats.adzuna?.added ?? 0);
+  const lines: string[] = [
+    `🆕 <b>Sync selesai</b> — ${formatWIB(new Date())}`,
+  ];
+  const remotiveLine = syncSourceLine('Remotive', stats.remotive, '');
+  if (remotiveLine) lines.push(remotiveLine);
+  // Adzuna's tail is its per-row upsert error count; only meaningful on success.
+  const adzunaTail = stats.adzuna ? `, ${stats.adzuna.errors} error` : '';
+  const adzunaLine = syncSourceLine('Adzuna', stats.adzuna, adzunaTail);
+  if (adzunaLine) lines.push(adzunaLine);
+  lines.push(`Total: ${totalAdded} gig baru masuk`);
+  return lines.join('\n');
+}
+
+/**
+ * Notify the Telegram channel that a cron sync just landed new gigs. Best-effort
+ * fire-and-forget: returns true if sent, false otherwise (including when
+ * unconfigured). Never throws — safe to `void` from the cron handler.
+ *
+ * Callers should gate on `totalAdded > 0` so the channel isn't spammed on runs
+ * that added nothing.
+ */
+export async function notifyNewGigsSynced(stats: GigsSyncedPayload): Promise<boolean> {
+  if (!isTelegramConfigured()) return false;
+  return sendTelegramMessage(buildNewGigsSyncedMessage(stats));
+}

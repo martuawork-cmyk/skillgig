@@ -8,6 +8,7 @@ import 'server-only';
 import { NextResponse } from 'next/server';
 import { syncRemotive } from '@/lib/job-sync/remotive';
 import { syncAdzuna } from '@/lib/job-sync/adzuna';
+import { notifyNewGigsSynced } from '@/lib/telegram';
 
 /** True when the request carries the expected Bearer secret. */
 function isAuthorized(req: Request): boolean {
@@ -93,6 +94,18 @@ async function runSync(): Promise<Response> {
   // scheduler / alerting treats a total outage as a real failure). Per-row
   // Adzuna `errors` do NOT count as fatal — they're surfaced in the response.
   const success = remotiveOk || adzunaOk;
+
+  // Ping the admin Telegram channel when the run actually surfaced new gigs —
+  // best-effort and fire-and-forget, exactly like the gig-approval notification
+  // (lib/supabase/admin-queries.ts): a Telegram failure must NEVER turn a
+  // successful sync into a failed cron response. Only ping when at least one
+  // source added something, so runs that added nothing stay quiet.
+  const totalAdded = remotive.added + adzuna.added;
+  if (totalAdded > 0) {
+    void notifyNewGigsSynced({ remotive, adzuna }).catch(() => {
+      /* swallow — see note above */
+    });
+  }
 
   return NextResponse.json<SyncResponse>(
     { success, remotive, adzuna, timestamp },
