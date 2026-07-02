@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/Badge';
 import { useToast, Toast } from '@/components/ui/Toast';
 import { CompanyLogo } from '@/components/job/CompanyLogo';
 import type { Gig } from '@/lib/types';
-import { formatSalaryRange, timeAgo, jobTypeColor, isUrlUnavailable, cn } from '@/lib/utils';
+import { timeAgo, jobTypeColor, isUrlUnavailable, cn } from '@/lib/utils';
+import { formatSalaryRangeIDR } from '@/lib/currency';
 import { jobLevelLabel, jobCategoryLabel, isSalaryHidden, jobLocation } from '@/lib/job-utils';
 import { useSavedStore } from '@/lib/store/savedStore';
 import { UrlUnavailableBadge } from '@/components/ui/UrlUnavailableBadge';
@@ -118,7 +119,7 @@ export function JobCard({ gig }: Props) {
           <p className="text-base font-extrabold text-slate-900">
             {salaryHidden
               ? 'Gaji nego'
-              : formatSalaryRange(salaryMin, salaryMax, gig.salaryCurrency ?? 'IDR', 'thn')}
+              : formatSalaryRangeIDR(salaryMin, salaryMax, gig.salaryCurrency ?? 'IDR', 'thn')}
           </p>
 
           {/* Snippet */}

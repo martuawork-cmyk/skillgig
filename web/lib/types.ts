@@ -93,7 +93,9 @@ export type GigPlatform =
   | 'Fiverr'
   | 'Projects.co.id'
   | 'Sribulancer'
-  | 'Remotive';
+  | 'Remotive'
+  | 'Jobicy'
+  | 'RemoteOK';
 
 export const GIG_PLATFORMS: Record<GigPlatform, string> = {
   'Upwork':         'bg-sky-100 text-sky-700',
@@ -101,6 +103,8 @@ export const GIG_PLATFORMS: Record<GigPlatform, string> = {
   'Projects.co.id': 'bg-orange-100 text-orange-700',
   'Sribulancer':    'bg-violet-100 text-violet-700',
   'Remotive':       'bg-teal-100 text-teal-700',
+  'Jobicy':         'bg-indigo-100 text-indigo-700',
+  'RemoteOK':       'bg-rose-100 text-rose-700',
 };
 
 export interface Course {

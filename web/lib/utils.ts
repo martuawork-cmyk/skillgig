@@ -16,6 +16,16 @@ export function formatIDR(amount: number): string {
 }
 
 /**
+ * Number-only IDR format — NO "Rp" prefix: 46675 → "46.675".
+ * Use inside strings that already carry their own "Rp " so the prefix isn't
+ * duplicated (the old `formatSalaryRange` used `formatIDR` here and rendered the
+ * infamous "Rp Rp 46.675").
+ */
+export function formatIDRNumber(amount: number): string {
+  return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(amount);
+}
+
+/**
  * Format a salary / budget range with the right currency prefix.
  *   USD → "USD 500 – 1.000"        (dot thousands separator, single prefix)
  *   IDR → "Rp 5.000.000 – Rp 15.000.000"  (formatIDR on each bound)
@@ -51,8 +61,10 @@ export function formatSalaryRange(
     const fmt = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
     return `USD ${fmt.format(min)}${dash}${fmt.format(max)}/${period}`;
   }
+  // Use formatIDRNumber (no "Rp"): the template already prepends "Rp ". Using
+  // formatIDR here is what produced the double-prefix "Rp Rp 500.000" bug.
   const toJt = (n: number) =>
-    n >= 1_000_000 ? `${Math.round(n / 1_000_000)}jt` : formatIDR(n);
+    n >= 1_000_000 ? `${formatIDRNumber(Math.round(n / 1_000_000))}jt` : formatIDRNumber(n);
   return `Rp ${toJt(min)}${dash}${toJt(max)}/${period}`;
 }
 

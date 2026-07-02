@@ -8,7 +8,8 @@ import 'server-only';
 import { NextResponse } from 'next/server';
 import { waitUntil } from '@vercel/functions';
 import { syncRemotive } from '@/lib/job-sync/remotive';
-import { syncAdzuna } from '@/lib/job-sync/adzuna';
+import { syncJobicy } from '@/lib/job-sync/jobicy';
+import { syncRemoteOK } from '@/lib/job-sync/remoteok';
 import { notifyNewGigsSynced } from '@/lib/telegram';
 
 /** True when the request carries the expected Bearer secret. */
@@ -31,22 +32,31 @@ type SourceStats = {
   error?: string;
 };
 
-/** Adzuna additionally reports per-row upsert errors (rows that conflicted or
- *  otherwise failed individually without aborting the rest of its batch). */
-type AdzunaStats = SourceStats & { errors: number };
-
 type SyncResponse = {
   success: boolean;
   /** Present on the 401 path instead of per-source stats. */
   error?: string;
-  /** Present only after auth succeeds. */
-  remotive?: SourceStats;
-  adzuna?: AdzunaStats;
+  /** Per-source stats, keyed by source name (remotive / jobicy / remoteok).
+   *  Present only after auth succeeds. */
+  sources?: Record<string, SourceStats>;
   /** Present when a sync was skipped because one was already running / just ran. */
   skipped?: boolean;
   reason?: string;
   timestamp: string;
 };
+
+/** Remote-first job sources, run in order on every cron tick. Adzuna was
+ *  removed: its `gb` feed returned UK LOCAL jobs (teachers, engineers), not the
+ *  remote-global roles this board is for. All three below are remote-native and
+ *  need no API key. Add a source here to extend the rotation. */
+const SOURCES: ReadonlyArray<{
+  name: string;
+  run: () => Promise<{ added: number; updated: number; skipped: number }>;
+}> = [
+  { name: 'remotive', run: syncRemotive },
+  { name: 'jobicy', run: syncJobicy },
+  { name: 'remoteok', run: syncRemoteOK },
+];
 
 function unauthorized(): Response {
   return NextResponse.json<SyncResponse>(
@@ -86,65 +96,53 @@ const SYNC_COOLDOWN_MS = 60_000;
 async function runSync(): Promise<Response> {
   const timestamp = new Date().toISOString();
 
-  // Run each source in its OWN try/catch. A fatal failure in one source (e.g.
-  // Adzuna credentials missing, or its API down) must NOT abort the other, and
-  // must NOT turn the whole cron into success:false — the response reports
-  // per-source stats so a degraded run is still visible.
-  let remotiveOk = true;
-  let remotive: SourceStats = { added: 0, updated: 0, skipped: 0 };
-  try {
-    remotive = await syncRemotive();
-    // eslint-disable-next-line no-console
-    console.log('[cron/fetch-jobs] Remotive sync OK:', remotive);
-  } catch (err) {
-    remotiveOk = false;
-    remotive = { ...remotive, error: errMsg(err) };
-    // eslint-disable-next-line no-console
-    console.error('[cron/fetch-jobs] Remotive sync FAILED:', err);
+  // Run each source in its OWN try/catch. A fatal failure in one source (its API
+  // down, a timeout) must NOT abort the others, and must NOT turn the whole cron
+  // into success:false — the response reports per-source stats so a degraded run
+  // stays visible.
+  const sources: Record<string, SourceStats> = {};
+  let anyOk = false;
+  for (const src of SOURCES) {
+    try {
+      const stats = await src.run();
+      sources[src.name] = stats;
+      anyOk = true;
+      // eslint-disable-next-line no-console
+      console.log(`[cron/fetch-jobs] ${src.name} sync OK:`, stats);
+    } catch (err) {
+      sources[src.name] = { added: 0, updated: 0, skipped: 0, error: errMsg(err) };
+      // eslint-disable-next-line no-console
+      console.error(`[cron/fetch-jobs] ${src.name} sync FAILED:`, err);
+    }
   }
 
-  let adzunaOk = true;
-  let adzuna: AdzunaStats = { added: 0, updated: 0, skipped: 0, errors: 0 };
-  try {
-    adzuna = await syncAdzuna();
-    // eslint-disable-next-line no-console
-    console.log('[cron/fetch-jobs] Adzuna sync OK:', adzuna);
-  } catch (err) {
-    adzunaOk = false;
-    adzuna = { ...adzuna, error: errMsg(err) };
-    // eslint-disable-next-line no-console
-    console.error('[cron/fetch-jobs] Adzuna sync FAILED:', err);
-  }
-
-  // The cron is considered successful if AT LEAST ONE source completed without
-  // a fatal error. Only when BOTH sources throw do we return a 500 (so the
-  // scheduler / alerting treats a total outage as a real failure). Per-row
-  // Adzuna `errors` do NOT count as fatal — they're surfaced in the response.
-  const success = remotiveOk || adzunaOk;
+  // The cron is successful if AT LEAST ONE source completed without a fatal
+  // error. Only a total outage (every source throws) returns 500 so the
+  // scheduler / alerting treats it as a real failure.
+  const success = anyOk;
 
   // Ping the admin Telegram channel when the run actually surfaced new gigs —
-  // best-effort and fire-and-forget, exactly like the gig-approval notification
-  // (lib/supabase/admin-queries.ts): a Telegram failure must NEVER turn a
-  // successful sync into a failed cron response. Only ping when at least one
-  // source added something, so runs that added nothing stay quiet.
-  const totalAdded = remotive.added + adzuna.added;
+  // best-effort and fire-and-forget: a Telegram failure must NEVER turn a
+  // successful sync into a failed cron response. Only ping when something was
+  // added, so runs that added nothing stay quiet.
+  const totalAdded = Object.values(sources).reduce((sum, s) => sum + s.added, 0);
   if (totalAdded > 0) {
     waitUntil(
-      notifyNewGigsSynced({ remotive, adzuna }).catch(() => {
+      notifyNewGigsSynced(sources).catch(() => {
         /* swallow — see note above */
       }),
     );
   }
 
   return NextResponse.json<SyncResponse>(
-    { success, remotive, adzuna, timestamp },
+    { success, sources, timestamp },
     { status: success ? 200 : 500 },
   );
 }
 
 /**
  * Shared GET/POST entry for the job-sync cron routes. Gates on the Bearer
- * secret, then runs the combined Remotive + Adzuna sync.
+ * secret, then runs the remote-first sources (Remotive + Jobicy + RemoteOK).
  */
 export async function syncJobsHandler(req: Request): Promise<Response> {
   if (!isAuthorized(req)) return unauthorized();

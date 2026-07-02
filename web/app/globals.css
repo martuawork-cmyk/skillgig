@@ -37,4 +37,23 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Living-aurora hero background — slow floating gradient blobs. Pure CSS
+     (no JS / framer-motion) so the landing page stays fast & fully SSR for SEO.
+     Honours prefers-reduced-motion. */
+  @keyframes sg-float {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%      { transform: translate(34px, -22px) scale(1.12); }
+  }
+  @keyframes sg-float-2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%      { transform: translate(-28px, 22px) scale(1.06); }
+  }
+  .animate-sg-float   { animation: sg-float 16s ease-in-out infinite; }
+  .animate-sg-float-2 { animation: sg-float-2 20s ease-in-out infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-sg-float,
+    .animate-sg-float-2 { animation: none; }
+  }
 }

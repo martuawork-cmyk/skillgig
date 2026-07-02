@@ -21,13 +21,11 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-semibold text-white text-sm mb-3">Journey</h4>
+            <h4 className="font-semibold text-white text-sm mb-3">Produk</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/learn" className="hover:text-white">Learn</Link></li>
-              <li><Link href="/skills" className="hover:text-white">Build Skill</Link></li>
-              <li><Link href="/gigs" className="hover:text-white">Discover Gig</Link></li>
-              <li><Link href="/applications" className="hover:text-white">Apply</Link></li>
-              <li><Link href="/earn" className="hover:text-white">Earn</Link></li>
+              <li><Link href="/jobs" className="hover:text-white">Lowongan Remote</Link></li>
+              <li><Link href="/roadmap" className="hover:text-white">Roadmap Skill</Link></li>
+              <li><span className="text-slate-500">Learn &amp; Earn <span className="text-[10px]">(segera)</span></span></li>
             </ul>
           </div>
 

@@ -24,6 +24,7 @@ const STATIC_ROUTES: MetadataRoute.Sitemap = [
   { url: abs('/learn'), changeFrequency: 'weekly', priority: 0.9, lastModified: new Date() },
   { url: abs('/gigs'), changeFrequency: 'weekly', priority: 0.9, lastModified: new Date() },
   { url: abs('/jobs'), changeFrequency: 'weekly', priority: 0.9, lastModified: new Date() },
+  { url: abs('/tools/cv-review'), changeFrequency: 'monthly', priority: 0.8, lastModified: new Date() },
   { url: abs('/roadmap'), changeFrequency: 'weekly', priority: 0.8, lastModified: new Date() },
   { url: abs('/skills'), changeFrequency: 'weekly', priority: 0.8, lastModified: new Date() },
   { url: abs('/earn'), changeFrequency: 'monthly', priority: 0.7, lastModified: new Date() },
@@ -47,9 +48,16 @@ const REMOTE_JOB_CATEGORY_ROUTES: MetadataRoute.Sitemap = CATEGORIES.map((c) => 
 interface GigRow {
   id: string;
   created_at?: string | null;
+  platform?: string | null;
 }
 
-/** Published gig detail pages. Safe-fallback to [] on any failure. */
+/** Platforms whose rows are REMOTE JOBS (the wedge) — their detail pages live
+ *  at /jobs/[id]. Everything else (local freelance gigs) lives at /gigs/[id].
+ *  Routing each row to the URL that matches its canonical avoids indexing the
+ *  same listing under two paths. */
+const REMOTE_JOB_PLATFORMS = new Set(['Remotive', 'Jobicy', 'RemoteOK', 'Adzuna']);
+
+/** Published listing detail pages. Safe-fallback to [] on any failure. */
 async function fetchPublishedGigs(): Promise<MetadataRoute.Sitemap> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -57,17 +65,20 @@ async function fetchPublishedGigs(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/gigs?status=eq.published&select=id,created_at&order=created_at.desc&limit=5000`,
+      `${supabaseUrl}/rest/v1/gigs?status=eq.published&select=id,created_at,platform&order=created_at.desc&limit=5000`,
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } },
     );
     if (!res.ok) return [];
     const rows: GigRow[] = await res.json();
-    return rows.map((row) => ({
-      url: abs(`/gigs/${row.id}`),
-      changeFrequency: 'weekly' as const,
-      priority: 0.8,
-      lastModified: row.created_at ? new Date(row.created_at) : new Date(),
-    }));
+    return rows.map((row) => {
+      const isJob = row.platform ? REMOTE_JOB_PLATFORMS.has(row.platform) : false;
+      return {
+        url: abs(`${isJob ? '/jobs' : '/gigs'}/${row.id}`),
+        changeFrequency: 'weekly' as const,
+        priority: isJob ? 0.8 : 0.6,
+        lastModified: row.created_at ? new Date(row.created_at) : new Date(),
+      };
+    });
   } catch {
     return [];
   }

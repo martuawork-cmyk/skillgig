@@ -17,7 +17,7 @@ import {
   isSalaryHidden,
   jobLocation,
 } from '@/lib/job-utils';
-import { buildMetadata } from '@/lib/seo';
+import { buildMetadata, jobPostingJsonLd } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,6 +100,12 @@ export default async function JobDetailPage({
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+      {/* JobPosting structured data → eligible for the Google Jobs rich result */}
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingJsonLd(gig)) }}
+      />
       <Link
         href="/jobs"
         className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-indigo-600 mb-4"

@@ -6,12 +6,15 @@ import { UserMenu } from '@/components/layout/UserMenu';
 import { Logo } from '@/components/brand/Logo';
 import { cn } from '@/lib/utils';
 
+// Focused nav — the wedge is the remote job board. Learn / Earn / Dashboard are
+// hidden (coming soon): their routes still exist but are unlinked so the product
+// reads as one sharp thing, not three half-built ones. Only routes that exist
+// are linked here (no dead links). Re-add Tools/Pricing once those pages ship.
 const NAV = [
-  { label: 'Dashboard', href: '/dashboard' },
-  { label: 'Learn',     href: '/learn'     },
-  { label: 'Earn',      href: '/earn'      },
-  { label: 'Jobs',      href: '/jobs'      },
-  { label: 'Roadmap',   href: '/roadmap'   },
+  { label: 'Lowongan',      href: '/jobs'            },
+  { label: 'Review CV',     href: '/tools/cv-review' },
+  { label: 'Roadmap',       href: '/roadmap'         },
+  { label: 'Tentang',       href: '/about'           },
 ];
 
 type Props = {

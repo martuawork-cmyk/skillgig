@@ -1,105 +1,124 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { Briefcase, Users, Wallet, Star } from 'lucide-react';
+import { Briefcase, Globe, RefreshCw, BadgeCheck, Sparkles } from 'lucide-react';
 import { Card, CardBody } from '@/components/ui/Card';
 import { ButtonLink } from '@/components/ui/Button';
-import { GigCard } from '@/components/gig/GigCard';
 import { JobCard } from '@/components/job/JobCard';
-import { CourseCard } from '@/components/course/CourseCard';
 import { NewsletterSection } from '@/components/newsletter/NewsletterSection';
-import { getFeaturedCourses, getGigs, getJobs, getHomepageStats, getSkillsForNewsletter, isSupabaseConfigured } from '@/lib/supabase/queries';
-import { formatCompact, formatIDR } from '@/lib/utils';
+import {
+  getJobs,
+  getHomepageStats,
+  getSkillsForNewsletter,
+  isSupabaseConfigured,
+} from '@/lib/supabase/queries';
+import { formatCompact } from '@/lib/utils';
 import { buildMetadata } from '@/lib/seo';
 
-const JOURNEY = [
-  { icon: '📚', label: 'Learn',  desc: 'Pelajari skill digital dari kursus terstruktur', href: '/learn' },
-  { icon: '🛠️', label: 'Build',  desc: 'Bangun portofolio dengan project nyata',        href: '/skills' },
-  { icon: '🔍', label: 'Discover', desc: 'Temukan gig yang sesuai skill kamu',          href: '/gigs' },
-  { icon: '✉️', label: 'Apply',  desc: 'Kirim proposal & dapatkan pekerjaan',           href: '/applications' },
-  { icon: '💰', label: 'Earn',   desc: 'Terima pembayaran & tarik ke rekening',         href: '/earn' },
+// Why-SkillGig value props — reframed for the wedge (job seekers), replacing the
+// old Learn→Build→Earn journey. Every card reinforces "relevant remote jobs for
+// Indonesians", which is where we beat LokerRemote (relevance, not volume).
+const WHY = [
+  {
+    Icon: Globe,
+    title: 'Perusahaan global',
+    desc: 'Lowongan remote dari perusahaan di seluruh dunia — dikumpulkan dari Remotive, Jobicy, RemoteOK, dan lainnya.',
+    accent: 'from-indigo-500 to-violet-500',
+  },
+  {
+    Icon: BadgeCheck,
+    title: 'Dikurasi untuk Indonesia',
+    desc: 'Fokus ke lowongan yang terbuka untuk kandidat Indonesia — tak buang waktu melamar yang menolak WNI.',
+    accent: 'from-emerald-500 to-teal-500',
+  },
+  {
+    Icon: RefreshCw,
+    title: 'Diperbarui otomatis',
+    desc: 'Lowongan baru masuk setiap hari secara otomatis. Yang kamu lihat selalu segar.',
+    accent: 'from-sky-500 to-blue-500',
+  },
+  {
+    Icon: Sparkles,
+    title: 'Alert & CV tools (segera)',
+    desc: 'Alert keyword lowongan + review CV bertenaga AI yang dioptimalkan untuk tiap lowongan. Segera hadir.',
+    accent: 'from-amber-500 to-orange-500',
+  },
 ];
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = buildMetadata({
-  title: 'SkillGig.id — Belajar Skill Digital & Cari Freelance Indonesia',
+  title: 'SkillGig.id — Lowongan Kerja Remote Global untuk Indonesia',
   description:
-    'Platform Indonesia yang menghubungkan perjalanan belajar skill digital, membangun portofolio, menemukan gig, melamar, dan menghasilkan — semuanya untuk freelancer Indonesia.',
+    'Ratusan lowongan kerja remote dari perusahaan global, dikurasi khusus yang terbuka untuk pelamar Indonesia. Cari, filter, dan lamar — gratis. Diperbarui setiap hari.',
   path: '/',
 });
 
 export default async function Home() {
-  // Featured items — fetched at request time so changes in Supabase appear
-  // immediately without a rebuild. If Supabase isn't configured yet, render
-  // the static landing without featured sections.
+  // Featured items fetched at request time so Supabase changes appear without a
+  // rebuild. Without Supabase configured, render the static landing.
   const ready = isSupabaseConfigured();
-  const featuredGigs    = ready ? (await getGigs()).slice(0, 3)    : [];
-  const featuredCourses = ready ? await getFeaturedCourses(6) : [];
-  // Latest jobs for the "Lowongan Kerja Terbaru" strip — Full-Time & Contract
-  // only (the homepage teases employment roles; Part-Time/Internship live on
-  // /jobs). getJobs() is cached + newest-first, so this is a cheap filter.
-  const featuredJobs = ready
-    ? (await getJobs())
-        .filter((g) => g.jobType === 'Full-Time' || g.jobType === 'Contract')
-        .slice(0, 4)
-    : [];
-  const stats = ready ? await getHomepageStats() : { totalGigs: 0, totalUsers: 0, avgBudgetMax: null };
-  // Newsletter dropdown options. Falls back to an empty list when Supabase
-  // isn't reachable — the client component then renders its own error state
-  // and asks the visitor to retry later.
+  // Latest remote jobs — the centerpiece of the page (the wedge). Newest-first
+  // and cached in getJobs(); take the freshest 8.
+  const featuredJobs = ready ? (await getJobs()).slice(0, 8) : [];
+  const stats = ready
+    ? await getHomepageStats()
+    : { totalGigs: 0, totalUsers: 0, avgBudgetMax: null };
+  // Newsletter dropdown options (skill preference) — this is the alert opt-in.
   const skills = ready ? await getSkillsForNewsletter() : [];
 
+  // Honest, job-board-framed stats. Only `Lowongan remote` is dynamic; the rest
+  // are truthful value props, not invented numbers.
   const STATS = [
-    { value: formatCompact(stats.totalGigs),  label: 'Active gigs',     Icon: Briefcase, accent: 'from-indigo-500 to-violet-500' },
-    { value: formatCompact(stats.totalUsers), label: 'Freelancers',     Icon: Users,     accent: 'from-emerald-500 to-teal-500' },
-    { value: stats.avgBudgetMax != null ? formatIDR(Math.round(stats.avgBudgetMax)) : '—', label: 'Avg. project', Icon: Wallet, accent: 'from-amber-500 to-orange-500' },
-    { value: '4.8★', label: 'Client rating',  Icon: Star,              accent: 'from-rose-500 to-pink-500' },
+    { value: formatCompact(stats.totalGigs), label: 'Lowongan remote', Icon: Briefcase, accent: 'from-indigo-500 to-violet-500' },
+    { value: 'Harian',  label: 'Update otomatis',   Icon: RefreshCw,  accent: 'from-emerald-500 to-teal-500' },
+    { value: '100%',    label: 'Remote global',     Icon: Globe,      accent: 'from-sky-500 to-blue-500' },
+    { value: 'Gratis',  label: 'Mulai cari kerja',  Icon: BadgeCheck, accent: 'from-amber-500 to-orange-500' },
   ];
 
   return (
     <div>
       {/* Hero */}
       <section className="relative overflow-hidden">
+        {/* Living-aurora background (pure CSS, GPU transforms only) */}
         <div className="absolute inset-0 -z-10 bg-gradient-to-br from-indigo-50 via-white to-violet-50" />
-        <div className="absolute inset-0 -z-10 opacity-50 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]">
-          <div className="absolute top-10 left-10 w-72 h-72 bg-indigo-300 rounded-full blur-3xl opacity-20" />
-          <div className="absolute bottom-10 right-10 w-96 h-96 bg-fuchsia-300 rounded-full blur-3xl opacity-20" />
+        <div className="absolute inset-0 -z-10 opacity-60 [mask-image:radial-gradient(ellipse_at_center,black,transparent_72%)]">
+          <div className="animate-sg-float absolute top-0 left-8 w-80 h-80 bg-indigo-300 rounded-full blur-3xl opacity-25" />
+          <div className="animate-sg-float-2 absolute bottom-0 right-4 w-[26rem] h-[26rem] bg-fuchsia-300 rounded-full blur-3xl opacity-20" />
+          <div className="animate-sg-float absolute top-24 right-1/3 w-72 h-72 bg-sky-300 rounded-full blur-3xl opacity-20" />
         </div>
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold mb-6">
               <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-              © 2026 SkillGig.id · All rights reserved.
+              🌏 Remote job global · terbuka untuk pelamar Indonesia
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.05]">
-              Belajar skill digital,<br />
+              Kerja remote global,<br />
               <span className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 bg-clip-text text-transparent">
-                raup cuan dari karya kamu.
+                dari Indonesia.
               </span>
             </h1>
             <p className="mt-6 text-lg text-slate-600 leading-relaxed max-w-2xl">
-              SkillGig menghubungkan perjalanan <strong className="text-slate-900">belajar</strong> →{' '}
-              <strong className="text-slate-900">membangun skill</strong> →{' '}
-              <strong className="text-slate-900">menemukan gig</strong> →{' '}
-              <strong className="text-slate-900">melamar</strong> →{' '}
-              <strong className="text-slate-900">menghasilkan</strong>.
-              Semua dalam satu platform untuk freelancer Indonesia.
+              Ratusan lowongan remote dari perusahaan global — dikurasi khusus
+              yang <strong className="text-slate-900">terbuka untuk kandidat Indonesia</strong>.
+              Cari, filter, dan lamar. Diperbarui setiap hari, gratis.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <ButtonLink
-                href="/learn"
+                href="/jobs"
                 size="xl"
                 className="shadow-lg shadow-indigo-600/25 hover:shadow-xl hover:shadow-indigo-600/30"
               >
-                <span aria-hidden>🚀</span> Mulai Belajar
+                <span aria-hidden>💼</span> Lihat Lowongan
               </ButtonLink>
               <ButtonLink
-                href="/gigs"
+                href="/roadmap"
                 variant="secondary"
                 size="xl"
                 className="shadow-md"
               >
-                Cari Gig →
+                Roadmap Skill →
               </ButtonLink>
             </div>
           </div>
@@ -129,71 +148,48 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Journey steps */}
+      {/* Why SkillGig */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <div className="text-center mb-10">
           <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            Journey kamu di SkillGig
+            Kenapa cari kerja remote lewat SkillGig
           </h2>
           <p className="text-slate-600 mt-2">
-            Lima langkah dari nol sampai cuan pertama.
+            Bukan yang terbanyak — tapi yang paling relevan untuk kamu.
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {JOURNEY.map((s, i) => (
-            <Link
-              key={s.label}
-              href={s.href}
-              className="group relative px-5 py-6 bg-white border border-slate-200 rounded-2xl shadow-soft hover:border-indigo-300 hover:shadow-md transition"
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {WHY.map((w) => (
+            <div
+              key={w.title}
+              className="px-5 py-6 bg-white border border-slate-200 rounded-2xl shadow-soft hover:border-indigo-300 hover:shadow-md transition"
             >
-              <div className="absolute -top-3 -left-3 w-7 h-7 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-white text-xs font-bold grid place-items-center shadow-soft">
-                {i + 1}
-              </div>
-              <div className="text-3xl mb-3">{s.icon}</div>
-              <h3 className="font-bold text-slate-900 group-hover:text-indigo-600 transition">
-                {s.label}
-              </h3>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">{s.desc}</p>
-            </Link>
+              <span
+                aria-hidden
+                className={`grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br ${w.accent} shadow-sm mb-4`}
+              >
+                <w.Icon className="h-5 w-5 text-white" />
+              </span>
+              <h3 className="font-bold text-slate-900">{w.title}</h3>
+              <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">{w.desc}</p>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* Featured Gigs */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-end justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              🔍 Gigs pilihan minggu ini
-            </h2>
-            <p className="text-sm text-slate-600 mt-1">Peluang terbaru dari klien Indonesia</p>
-          </div>
-          <Link href="/gigs" className="text-sm font-semibold text-indigo-600 hover:underline">
-            Lihat semua →
-          </Link>
-        </div>
-        {featuredGigs.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {featuredGigs.map((g) => (
-              <GigCard key={g.id} gig={g} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Latest Jobs */}
+      {/* Latest remote jobs — centerpiece */}
       {featuredJobs.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-end justify-between mb-6">
             <div>
               <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                💼 Lowongan Kerja Terbaru
+                💼 Lowongan remote terbaru
               </h2>
               <p className="text-sm text-slate-600 mt-1">
-                Lowongan Full-Time &amp; Contract dari perusahaan global
+                Baru masuk dari perusahaan global — remote, terbuka untuk Indonesia
               </p>
             </div>
-            <Link href="/jobs" className="text-sm font-semibold text-indigo-600 hover:underline">
+            <Link href="/jobs" className="text-sm font-semibold text-indigo-600 hover:underline shrink-0">
               Lihat semua lowongan →
             </Link>
           </div>
@@ -205,29 +201,7 @@ export default async function Home() {
         </section>
       )}
 
-      {/* Featured Courses */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-end justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              📚 Kursus populer
-            </h2>
-            <p className="text-sm text-slate-600 mt-1">Mulai belajar skill yang paling dicari</p>
-          </div>
-          <Link href="/learn" className="text-sm font-semibold text-indigo-600 hover:underline">
-            Lihat semua →
-          </Link>
-        </div>
-        {featuredCourses.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {featuredCourses.map((c) => (
-              <CourseCard key={c.id} course={c} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Newsletter */}
+      {/* Newsletter / alert opt-in */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <NewsletterSection skills={skills} />
       </section>
@@ -237,20 +211,26 @@ export default async function Home() {
         <Card className="overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 border-0 text-white">
           <CardBody className="py-12 text-center">
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-              Siap mulai journey kamu?
+              Siap kerja remote?
             </h2>
             <p className="mt-3 text-indigo-100 max-w-xl mx-auto">
-              Daftar gratis dan akses ribuan kursus, gigs, dan peluang freelance di Indonesia.
+              Jelajahi ratusan lowongan remote global yang terbuka untuk pelamar
+              Indonesia. Gratis, tanpa ribet.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <button className="px-5 py-3 text-sm font-semibold bg-white text-indigo-700 rounded-lg shadow-soft hover:bg-slate-50 active:scale-[.98] transition">
-                Daftar gratis
-              </button>
+              <ButtonLink
+                href="/jobs"
+                variant="secondary"
+                size="lg"
+                className="bg-white text-indigo-700 hover:bg-slate-50 border-0"
+              >
+                Lihat semua lowongan
+              </ButtonLink>
               <Link
-                href="/earn"
+                href="/signup"
                 className="px-5 py-3 text-sm font-semibold bg-white/10 backdrop-blur border border-white/30 text-white rounded-lg hover:bg-white/20 transition"
               >
-                Lihat potensi earnings
+                Daftar gratis
               </Link>
             </div>
           </CardBody>

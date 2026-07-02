@@ -8,7 +8,7 @@
 // Client Component. Rates are read once at module load from env (set on the
 // server or baked at build) with sensible static fallbacks.
 
-import { formatIDR } from './utils';
+import { formatIDR, formatIDRNumber } from './utils';
 
 /**
  * Static fallback FX rates (1 unit → IDR). Used when no env override is set.
@@ -109,7 +109,37 @@ export function formatSalaryIDRCompact(
   rateOverride?: number,
 ): string {
   const idr = salaryRangeToIDR(min, max, currency, rateOverride);
+  // formatIDRNumber (no "Rp"): the "Rp " below is the only prefix — using
+  // formatIDR here would double it to "Rp Rp 500.000" for sub-juta values.
   const toJt = (n: number) =>
-    n >= 1_000_000 ? `${Math.round(n / 1_000_000)}jt` : formatIDR(n);
+    n >= 1_000_000 ? `${formatIDRNumber(Math.round(n / 1_000_000))}jt` : formatIDRNumber(n);
   return `Rp ${toJt(idr.min)}–${toJt(idr.max)}`;
+}
+
+/**
+ * Display-ready salary for a synced remote job: converts the foreign-currency
+ * amount to IDR, collapses an equal min/max to a single figure, and appends the
+ * period. This is what the /jobs cards should call — passing a raw GBP/USD
+ * figure straight to utils.formatSalaryRange rendered it un-converted (a
+ * £46.675/yr role showed "Rp 46.675/thn" instead of ≈ "Rp 966jt/thn").
+ *
+ *   formatSalaryRangeIDR(46_675, 46_675, 'GBP', 'thn') → "Rp 966jt/thn"
+ *   formatSalaryRangeIDR(60_000, 90_000, 'USD', 'thn') → "Rp 978jt–1.467jt/thn"
+ *   formatSalaryRangeIDR(0, 0, 'USD', 'thn')           → "Gaji nego"
+ */
+export function formatSalaryRangeIDR(
+  min: number,
+  max: number,
+  currency: string,
+  period: 'bln' | 'thn' = 'thn',
+  rateOverride?: number,
+): string {
+  const idr = salaryRangeToIDR(min, max, currency, rateOverride);
+  if (idr.min <= 0 && idr.max <= 0) return 'Gaji nego';
+  const toJt = (n: number) =>
+    n >= 1_000_000 ? `${formatIDRNumber(Math.round(n / 1_000_000))}jt` : formatIDRNumber(n);
+  const lo = Math.min(idr.min, idr.max);
+  const hi = Math.max(idr.min, idr.max);
+  const body = lo === hi || lo <= 0 ? `Rp ${toJt(hi)}` : `Rp ${toJt(lo)}–${toJt(hi)}`;
+  return `${body}/${period}`;
 }

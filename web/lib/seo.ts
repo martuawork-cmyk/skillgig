@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { Gig, GigJobType } from './types';
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || 'https://skillgig.id';
@@ -136,4 +137,90 @@ export function getSiteMetadata(): Metadata {
     // app/icon.png, app/apple-icon.png, app/favicon.ico) — Next.js injects the
     // matching <link> tags automatically, so we don't duplicate them here.
   };
+}
+
+// ===========================================================================
+// JobPosting structured data (schema.org) — the Google Jobs enabler.
+// ---------------------------------------------------------------------------
+// Rendered as a <script type="application/ld+json"> on each /jobs/[id] page.
+// A valid JobPosting makes the listing eligible for the Google Jobs rich
+// result (the "jobs" box at the top of search) — the fastest free-traffic
+// lever for a remote job board. See:
+// https://developers.google.com/search/docs/appearance/structured-data/job-posting
+// ===========================================================================
+
+/** schema.org employmentType per Google's controlled vocabulary. */
+const EMPLOYMENT_TYPE: Record<GigJobType, string> = {
+  'Full-Time': 'FULL_TIME',
+  'Part-Time': 'PART_TIME',
+  Contract: 'CONTRACTOR',
+  Freelance: 'CONTRACTOR',
+  Internship: 'INTERN',
+};
+
+/**
+ * Build the JobPosting JSON-LD object for a synced remote job.
+ *
+ * These are remote roles curated as open to Indonesian applicants, so we emit
+ * `jobLocationType: TELECOMMUTE` + `applicantLocationRequirements: Indonesia`
+ * (Google's required shape for remote postings). `baseSalary` is emitted in the
+ * job's SOURCE currency (USD/GBP/IDR) — the honest upstream figure, annual — and
+ * only when a real number is present. `validThrough` defaults to 60 days after
+ * posting so stale listings drop out of the rich result on their own.
+ */
+export function jobPostingJsonLd(gig: Gig): Record<string, unknown> {
+  const posted = gig.postedAt ? new Date(gig.postedAt) : new Date();
+  const validThrough = new Date(posted.getTime() + 60 * 24 * 60 * 60 * 1000);
+  const company = gig.company || gig.platform;
+  const min = gig.salaryMin ?? gig.budgetMin ?? 0;
+  const max = gig.salaryMax ?? gig.budgetMax ?? 0;
+  const currency = (gig.salaryCurrency ?? 'IDR').toUpperCase();
+
+  const ld: Record<string, unknown> = {
+    '@context': 'https://schema.org/',
+    '@type': 'JobPosting',
+    title: gig.titleId || gig.title,
+    description:
+      gig.descriptionId && gig.descriptionId.length > 0
+        ? gig.descriptionId
+        : `Lowongan kerja remote: ${gig.titleId || gig.title}`,
+    datePosted: posted.toISOString(),
+    validThrough: validThrough.toISOString(),
+    employmentType: gig.jobType ? EMPLOYMENT_TYPE[gig.jobType] : 'FULL_TIME',
+    hiringOrganization: {
+      '@type': 'Organization',
+      name: company,
+      ...(gig.company_logo ? { logo: gig.company_logo } : {}),
+    },
+    // Remote posting shape (Google requirement for telecommute roles).
+    jobLocationType: 'TELECOMMUTE',
+    applicantLocationRequirements: {
+      '@type': 'Country',
+      name: 'Indonesia',
+    },
+    directApply: false,
+    url: `${SITE_URL}/jobs/${gig.id}`,
+    identifier: {
+      '@type': 'PropertyValue',
+      name: gig.platform,
+      value: gig.sourceId || gig.id,
+    },
+  };
+
+  // Only emit baseSalary when we actually have a figure (Google warns on 0/0).
+  if (max > 0 || min > 0) {
+    const lo = Math.min(min || max, max || min);
+    const hi = Math.max(min, max);
+    ld.baseSalary = {
+      '@type': 'MonetaryAmount',
+      currency,
+      value: {
+        '@type': 'QuantitativeValue',
+        ...(lo === hi ? { value: hi } : { minValue: lo, maxValue: hi }),
+        unitText: 'YEAR',
+      },
+    };
+  }
+
+  return ld;
 }

@@ -51,6 +51,8 @@ const GIG_PLATFORMS: ReadonlySet<string> = new Set([
   'Projects.co.id',
   'Sribulancer',
   'Remotive',
+  'Jobicy',
+  'RemoteOK',
 ]);
 const GIG_JOB_TYPES: ReadonlySet<string> = new Set([
   'Full-Time',

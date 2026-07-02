@@ -186,15 +186,19 @@ export interface SyncSourceStats {
   error?: string;
 }
 
-/** Adzuna additionally reports per-row upsert errors. */
-export interface SyncAdzunaStats extends SyncSourceStats {
-  errors: number;
-}
+/** Payload for notifyNewGigsSynced() — per-source stats keyed by source name
+ *  (remotive / jobicy / remoteok / …). Generic so new sources need no change
+ *  here: the message builder just iterates whatever keys it's given. */
+export type GigsSyncedPayload = Record<string, SyncSourceStats | undefined>;
 
-/** Payload for notifyNewGigsSynced(). */
-export interface GigsSyncedPayload {
-  remotive?: SyncSourceStats;
-  adzuna?: SyncAdzunaStats;
+/** Pretty label for a source key; falls back to capitalising the key. */
+const SOURCE_LABELS: Record<string, string> = {
+  remotive: 'Remotive',
+  jobicy: 'Jobicy',
+  remoteok: 'RemoteOK',
+};
+function sourceLabel(key: string): string {
+  return SOURCE_LABELS[key] ?? key.charAt(0).toUpperCase() + key.slice(1);
 }
 
 /**
@@ -218,34 +222,29 @@ function formatWIB(date: Date): string {
 
 /**
  * One source line for the sync message, or null when that source didn't run.
- * `tail` carries source-specific suffixes (Adzuna's per-row error count) so the
- * base shape stays shared. A fatally-errored source shows ⚠️ instead of counts.
+ * A fatally-errored source shows ⚠️ instead of counts.
  */
-function syncSourceLine(
-  name: string,
-  stats: SyncSourceStats | undefined,
-  tail: string,
-): string | null {
+function syncSourceLine(name: string, stats: SyncSourceStats | undefined): string | null {
   if (!stats) return null;
   if (stats.error) return `${name}: ⚠️ gagal`;
-  return `${name}: +${stats.added} baru, ${stats.updated} update${tail}`;
+  return `${name}: +${stats.added} baru, ${stats.updated} update`;
 }
 
 /**
  * Build the cron-sync message body (HTML). Exported so it can be unit-tested
- * without going to the network.
+ * without going to the network. Iterates whatever source keys the payload
+ * carries, so adding a job source needs no change here.
  */
 export function buildNewGigsSyncedMessage(stats: GigsSyncedPayload): string {
-  const totalAdded = (stats.remotive?.added ?? 0) + (stats.adzuna?.added ?? 0);
-  const lines: string[] = [
-    `🆕 <b>Sync selesai</b> — ${formatWIB(new Date())}`,
-  ];
-  const remotiveLine = syncSourceLine('Remotive', stats.remotive, '');
-  if (remotiveLine) lines.push(remotiveLine);
-  // Adzuna's tail is its per-row upsert error count; only meaningful on success.
-  const adzunaTail = stats.adzuna ? `, ${stats.adzuna.errors} error` : '';
-  const adzunaLine = syncSourceLine('Adzuna', stats.adzuna, adzunaTail);
-  if (adzunaLine) lines.push(adzunaLine);
+  const entries = Object.entries(stats).filter(
+    (e): e is [string, SyncSourceStats] => Boolean(e[1]),
+  );
+  const totalAdded = entries.reduce((sum, [, s]) => sum + (s.added ?? 0), 0);
+  const lines: string[] = [`🆕 <b>Sync selesai</b> — ${formatWIB(new Date())}`];
+  for (const [key, s] of entries) {
+    const line = syncSourceLine(sourceLabel(key), s);
+    if (line) lines.push(line);
+  }
   lines.push(`Total: ${totalAdded} gig baru masuk`);
   return lines.join('\n');
 }
