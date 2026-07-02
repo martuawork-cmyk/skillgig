@@ -6,21 +6,15 @@ import { AnalyticsProvider } from '@/components/analytics/PostHogProvider';
 import { SavedHydrator } from '@/components/system/SavedHydrator';
 import { getCurrentUser } from '@/lib/supabase/session';
 import { getSiteMetadata, SITE_URL } from '@/lib/seo';
+import { PostHogInitializer } from '@/components/analytics/PostHogInitializer'; // Komponen wrapper baru
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
-
-// Plus Jakarta Sans is the admin workspace typeface. We expose it as a CSS
-// variable here (available to every route) and the admin shell opts into it via
-// `var(--font-jakarta)` — public pages keep Inter, so this does not change the
-// look of the marketing site.
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
   variable: '--font-jakarta',
 });
 
-// Default SEO + social metadata for the whole site. Per-page metadata built
-// via `buildMetadata()` in lib/seo.ts overrides these.
 export const metadata: Metadata = getSiteMetadata();
 
 export const viewport: Viewport = {
@@ -34,24 +28,14 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Fetch current user in the root layout so the header can render the
-  // appropriate auth state (sign-in button vs user menu) on every page.
-  // If Supabase isn't configured or session is missing, this resolves to null.
   const user = await getCurrentUser();
   const headerUser = user
-    ? {
-        id: user.id,
-        name: user.name,
-        initials: user.initials,
-        role: user.role,
-      }
+    ? { id: user.id, name: user.name, initials: user.initials, role: user.role }
     : null;
 
   return (
     <html lang="id" className={`${inter.variable} ${jakarta.variable}`}>
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
-        {/* Organization structured data — gives search engines the official
-            brand name + logo (Google prefers a raster logo for this field). */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -65,6 +49,8 @@ export default async function RootLayout({
           }}
         />
         <AnalyticsProvider>
+          {/* Tambahkan initializer ini agar initPostHog berjalan di client */}
+          <PostHogInitializer />
           <SiteChrome user={headerUser}>{children}</SiteChrome>
           <SavedHydrator />
         </AnalyticsProvider>
