@@ -14,14 +14,24 @@ import 'server-only';
 //     show the "via Remotive" attribution badge.
 //   • Listings are never republished to Google Jobs / LinkedIn / etc.
 //
-// Dedup: upsert ON CONFLICT (source_url) DO UPDATE, backed by the unique index
-// `gigs_source_url_key` (migration 015). `added` / `updated` counts are derived
-// by pre-fetching the existing source_urls for the incoming batch — cheaper and
-// more accurate than parsing the upsert response.
+// Dedup: upsert ON CONFLICT (source_id) DO UPDATE, backed by the unique index
+// `gigs_source_id_key` (migration 016). `added` / `updated` counts are derived
+// by pre-fetching the existing source_ids for the incoming batch — this is a
+// STATS-ONLY hint; the write decision is made entirely by the atomic upsert, so
+// a stale snapshot (e.g. under concurrent runs) can only skew the counts, never
+// cause a duplicate-key error.
 //
-// We also stamp `source_id` (migration 016) = `remotive:<id>` — the upstream's
-// own stable primary key, namespaced by provider so a future Jobicy / multi-
-// source sync can dedup on it without colliding with Remotive ids.
+// WHY source_id, NOT source_url (this was a real production bug):
+//   Remotive's `url` is the real outbound link (ToS: never rewrite it), but the
+//   upstream CAN re-canonicalise it between syncs (trailing slash, http→https,
+//   query params). An earlier version upserted ON CONFLICT (source_url). When a
+//   job's URL was re-canonicalised, the new row carried the SAME `source_id`
+//   (`remotive:<id>`) but a NEW `source_url` — so the `ON CONFLICT (source_url)`
+//   clause did NOT fire, the statement fell through to an INSERT, and collided
+//   on `gigs_source_id_key` → `duplicate key value violates unique constraint
+//   gigs_source_id_key` (23505), which threw and aborted the WHOLE batch. The
+//   stable, upstream-owned `source_id` is the correct conflict arbiter; this is
+//   exactly what migration 016's unique index was added for.
 // =============================================================================
 
 import { revalidateTag } from 'next/cache';
@@ -248,34 +258,60 @@ export async function syncRemotive(): Promise<SyncResult> {
   }
 
   const sb = createAdminClient();
-  const sourceUrls = rows.map((r) => r.source_url);
+  const sourceIds = rows.map((r) => r.source_id);
 
-  // Pre-fetch which source_urls already exist so we can report adds vs updates.
+  // Pre-fetch which source_ids already exist so we can report adds vs updates.
+  // This is a STATS-ONLY hint — see file header. It is deliberately NOT used to
+  // decide insert-vs-update; the upsert below is the sole write authority, so a
+  // failed or stale pre-fetch can only skew the reported counts, never produce a
+  // duplicate-key error or abort the sync.
   const { data: existing, error: selectErr } = await sb
     .from('gigs')
-    .select('source_url')
-    .in('source_url', sourceUrls);
-  if (selectErr) throw selectErr;
+    .select('source_id')
+    .in('source_id', sourceIds);
+  if (selectErr) {
+    // A failed stats pre-fetch must NOT abort the sync (it did previously). The
+    // upsert is authoritative for correctness; we just lose add/update fidelity
+    // for this run. Count everything as "updated" so we never over-report `added`
+    // (which drives the Telegram "new gigs" ping) on a degraded read.
+    // eslint-disable-next-line no-console
+    console.error('[remotive-sync] stats pre-fetch failed:', selectErr.message);
+  }
   const existingSet = new Set(
-    ((existing ?? []) as { source_url: string | null }[])
-      .map((r) => r.source_url)
+    ((existing ?? []) as { source_id: string | null }[])
+      .map((r) => r.source_id)
       .filter((v): v is string => Boolean(v)),
   );
 
   let added = 0;
   let updated = 0;
+
+  // Upsert ONE ROW AT A TIME (mirrors lib/job-sync/adzuna.ts) so a single
+  // per-row violation is CONTAINED — logged and skipped — instead of aborting
+  // the whole batch the way a bulk upsert would. This matters even after the
+  // ON CONFLICT (source_id) fix: a legacy row synced before migration 016
+  // (source_id NULL) that reappears in the feed with the same source_url would
+  // miss the source_id conflict and could collide on `gigs_source_url_key`
+  // (migration 015); per-row + try/catch turns that into a skipped row, not a
+  // batch failure. The atomic ON CONFLICT (source_id) clause also means a
+  // concurrent run inserting the same source_id just resolves to an UPDATE.
   for (const row of rows) {
-    if (existingSet.has(row.source_url)) updated += 1;
+    const { error: upsertErr } = await sb
+      .from('gigs')
+      .upsert(row, { onConflict: 'source_id' });
+
+    if (upsertErr) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[remotive-sync] upsert failed for ${row.source_id}:`,
+        upsertErr.message,
+      );
+      continue;
+    }
+
+    if (existingSet.has(row.source_id)) updated += 1;
     else added += 1;
   }
-
-  // Single upsert — the unique index on source_url is the conflict arbiter
-  // (ON CONFLICT (source_url) DO UPDATE). Existing rows get refreshed, new rows
-  // get inserted. Idempotent across re-runs within the same day.
-  const { error: upsertErr } = await sb
-    .from('gigs')
-    .upsert(rows, { onConflict: 'source_url' });
-  if (upsertErr) throw upsertErr;
 
   // Bust the public listings cache so synced jobs surface on /gigs without
   // waiting for the next tag revalidation. Best-effort: a failure here must

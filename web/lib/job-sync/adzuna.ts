@@ -260,14 +260,28 @@ export async function syncAdzuna(): Promise<SyncResult> {
   // Pre-fetch which source_ids already exist so we can report adds vs updates.
   // Keyed on source_id (the stable canonical id), NOT source_url — Adzuna's
   // redirect_url is not stable across syncs.
+  //
+  // This is a STATS-ONLY hint: it is deliberately NOT used to decide insert-vs-
+  // update. The per-row upsert below is the SOLE write authority and is atomic
+  // (ON CONFLICT (source_id) DO UPDATE, arbitrated by `gigs_source_id_key`).
+  // That means the check-then-write "race window" people worry about does NOT
+  // exist here — even if this snapshot is stale (e.g. a concurrent run inserted
+  // the same source_id a moment ago), the upsert still resolves to an UPDATE,
+  // never a duplicate-key violation. A failed/stale pre-fetch can only skew the
+  // reported counts, so a failure must NOT abort the sync.
   const { data: existing, error: selectErr } = await sb
     .from('gigs')
     .select('source_id')
     .in('source_id', sourceIds);
 
-  // A failure to pre-fetch is fatal for THIS source only — the caller wraps us
-  // in its own try/catch and will still report the other source's result.
-  if (selectErr) throw selectErr;
+  if (selectErr) {
+    // Don't abort — the upsert is authoritative for correctness; we just lose
+    // add/update fidelity for this run. Count everything as "updated" so we
+    // never over-report `added` (which drives the Telegram "new gigs" ping) on a
+    // degraded read.
+    // eslint-disable-next-line no-console
+    console.error('[adzuna-sync] stats pre-fetch failed:', selectErr.message);
+  }
 
   const existingSet = new Set(
     ((existing ?? []) as { source_id: string | null }[])
@@ -282,9 +296,13 @@ export async function syncAdzuna(): Promise<SyncResult> {
   // Upsert ONE ROW AT A TIME so a single violation (most commonly a residual
   // `source_url` collision now that we arbitrate on source_id) is contained:
   // it's counted as `errors` and the loop carries on to the next row instead of
-  // aborting the whole batch like a bulk upsert would.
+  // aborting the whole batch like a bulk upsert would. The atomic ON CONFLICT
+  // (source_id) clause means a concurrent run inserting the same source_id just
+  // turns this into an UPDATE — no duplicate-key error escapes.
   for (const row of dedupedRows) {
-    const wasUpdate = existingSet.has(row.source_id);
+    // On a degraded pre-fetch, conservatively count as an update (see above) so
+    // we never over-report `added` / trigger a spurious "new gigs" Telegram ping.
+    const wasUpdate = Boolean(selectErr) || existingSet.has(row.source_id);
     const { error: upsertErr } = await sb
       .from('gigs')
       .upsert(row, { onConflict: 'source_id' });
