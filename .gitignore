@@ -9,3 +9,6 @@ SkillGig_PRD_Phase2_Lanjutan.md
 # Claude Code local state
 .claude/
 prompts/
+.vercel
+.env*
+.DS_Store
