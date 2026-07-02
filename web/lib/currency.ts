@@ -19,6 +19,7 @@ import { formatIDR } from './utils';
 export const DEFAULT_RATES_TO_IDR: Readonly<Record<string, number>> = {
   USD: 16_300,
   EUR: 17_700,
+  GBP: 20_700,
   IDR: 1,
 };
 

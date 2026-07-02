@@ -104,16 +104,20 @@ export const sendTelegramNotification = (message: string): Promise<boolean> =>
   sendTelegramMessage(message);
 
 /** One-line human salary for the message, converting foreign currency to IDR. */
-function salaryLine(p: JobApprovedPayload): string {  const min = p.salaryMin ?? 0;
+function salaryLine(p: JobApprovedPayload): string {
+  const min = p.salaryMin ?? 0;
   const max = p.salaryMax ?? 0;
   if (min === 0 && max === 0) return 'Nego';
   const ccy = (p.salaryCurrency ?? 'IDR').trim().toUpperCase();
+  // All synced sources (Remotive, Adzuna) report ANNUAL figures today.
+  // Suffix "/thn" so the number isn't mistaken for a monthly salary.
+  const period = '/thn';
   if (ccy === 'IDR') {
     const dash = ' – ';
-    return `${formatIDR(min)}${dash}${formatIDR(max)}`;
+    return `${formatIDR(min)}${dash}${formatIDR(max)}${period}`;
   }
   // Foreign currency: show the converted ≈ IDR range (Task C3 currency util).
-  return `≈ ${formatSalaryIDRCompact(min, max, ccy)}`;
+  return `≈ ${formatSalaryIDRCompact(min, max, ccy)}${period}`;
 }
 
 /**

@@ -6,6 +6,7 @@ import 'server-only';
 // =============================================================================
 
 import { NextResponse } from 'next/server';
+import { waitUntil } from '@vercel/functions';
 import { syncRemotive } from '@/lib/job-sync/remotive';
 import { syncAdzuna } from '@/lib/job-sync/adzuna';
 import { notifyNewGigsSynced } from '@/lib/telegram';
@@ -128,9 +129,11 @@ async function runSync(): Promise<Response> {
   // source added something, so runs that added nothing stay quiet.
   const totalAdded = remotive.added + adzuna.added;
   if (totalAdded > 0) {
-    void notifyNewGigsSynced({ remotive, adzuna }).catch(() => {
-      /* swallow — see note above */
-    });
+    waitUntil(
+      notifyNewGigsSynced({ remotive, adzuna }).catch(() => {
+        /* swallow — see note above */
+      }),
+    );
   }
 
   return NextResponse.json<SyncResponse>(

@@ -124,7 +124,7 @@ type GigInsertRow = {
   job_type: GigJobType;
   budget_min: number;
   budget_max: number;
-  salary_currency: 'USD';
+  salary_currency: 'GBP';
   location: string;
   is_remote: boolean;
   url: string;
@@ -175,7 +175,7 @@ function toGigRow(job: AdzunaJob): GigInsertRow | null {
     // 3. Salary Handling: Adzuna mengembalikan data number langsung, tidak perlu regex rumit
     budget_min: job.salary_min ? Math.round(job.salary_min) : 0,
     budget_max: job.salary_max ? Math.round(job.salary_max) : 0,
-    salary_currency: 'USD',
+    salary_currency: 'GBP',
     location,
     is_remote: isRemote,
     url: source_url,

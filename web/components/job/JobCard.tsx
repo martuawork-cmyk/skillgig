@@ -118,7 +118,7 @@ export function JobCard({ gig }: Props) {
           <p className="text-base font-extrabold text-slate-900">
             {salaryHidden
               ? 'Gaji nego'
-              : formatSalaryRange(salaryMin, salaryMax, gig.salaryCurrency ?? 'IDR')}
+              : formatSalaryRange(salaryMin, salaryMax, gig.salaryCurrency ?? 'IDR', 'thn')}
           </p>
 
           {/* Snippet */}

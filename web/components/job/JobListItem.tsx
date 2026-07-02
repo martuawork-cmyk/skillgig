@@ -96,7 +96,7 @@ export function JobListItem({ gig }: Props) {
             <p className="font-extrabold text-slate-900 text-sm">
               {salaryHidden
                 ? 'Gaji nego'
-                : formatSalaryRange(salaryMin, salaryMax, gig.salaryCurrency ?? 'IDR')}
+                : formatSalaryRange(salaryMin, salaryMax, gig.salaryCurrency ?? 'IDR', 'thn')}
             </p>
             <p className="text-[11px] text-slate-600 mt-0.5">{timeAgo(gig.postedAt)}</p>
           </div>

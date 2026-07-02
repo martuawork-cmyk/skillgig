@@ -40,15 +40,20 @@ export function formatBudget(min: number, max: number, currency: string): string
  * form so Rp 500.000 doesn't render as the meaningless "Rp 0jt". Unknown
  * currencies fall back to the IDR branch.
  */
-export function formatSalaryRange(min: number, max: number, currency: string): string {
+export function formatSalaryRange(
+  min: number,
+  max: number,
+  currency: string,
+  period: 'bln' | 'thn' = 'bln',
+): string {
   const dash = '–';
   if (currency === 'USD') {
     const fmt = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
-    return `USD ${fmt.format(min)}${dash}${fmt.format(max)}/bln`;
+    return `USD ${fmt.format(min)}${dash}${fmt.format(max)}/${period}`;
   }
   const toJt = (n: number) =>
     n >= 1_000_000 ? `${Math.round(n / 1_000_000)}jt` : formatIDR(n);
-  return `Rp ${toJt(min)}${dash}${toJt(max)}/bln`;
+  return `Rp ${toJt(min)}${dash}${toJt(max)}/${period}`;
 }
 
 /** Tailwind badge classes for a given job type. */
