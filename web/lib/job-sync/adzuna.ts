@@ -4,6 +4,20 @@ import 'server-only';
 // Adzuna Jobs API auto-sync.
 // -----------------------------------------------------------------------------
 // Fetches jobs from the Adzuna Jobs API and upserts them into `public.gigs`.
+//
+// Dedup note (WHY source_id, NOT source_url):
+//   Adzuna's `redirect_url` is a tracking link that can carry ephemeral tokens /
+//   query params and is NOT guaranteed stable across syncs. `source_id`
+//   (`adzuna:<id>`) IS stable — it's the upstream's own primary key. The unique
+//   index `gigs_source_id_key` (migration 016) is therefore the correct conflict
+//   arbiter. Upserting on `source_url` (as an earlier version did) misses the
+//   real dup when Adzuna reissues the same job with a fresh redirect_url, falls
+//   through to an INSERT, and collides on `gigs_source_id_key` — a raw error
+//   that aborted the whole batch. We now conflict on `source_id`.
+//
+//   Rows are upserted one at a time inside a try/catch so that a single bad row
+//   (e.g. a residual `source_url` collision, or any other per-row violation) is
+//   counted as `errors` and skipped WITHOUT aborting the rest of the batch.
 // =============================================================================
 
 import { revalidateTag } from 'next/cache';
@@ -19,6 +33,10 @@ export type SyncResult = {
   added: number;
   updated: number;
   skipped: number;
+  /** Rows that hit a per-row upsert error (e.g. a residual unique collision).
+   *  Reported separately so the cron response can flag a degraded run without
+   *  failing the whole sync. */
+  errors: number;
 };
 
 /** Subset object resmi dari Adzuna API */
@@ -210,53 +228,89 @@ export async function syncAdzuna(): Promise<SyncResult> {
 
   const rows: GigInsertRow[] = [];
   let skipped = 0;
-  
+
   for (const job of jobs) {
     const row = toGigRow(job);
     if (row) rows.push(row);
     else skipped += 1;
   }
 
-  if (rows.length === 0) {
-    return { added: 0, updated: 0, skipped };
+  // Dedup the incoming batch on the canonical key. Adzuna occasionally returns
+  // the same job id more than once (or two jobs sharing an id with different
+  // redirect_urls); keeping the first occurrence avoids a same-command
+  // `gigs_source_id_key` collision and keeps the added/updated counts honest.
+  const seenSourceIds = new Set<string>();
+  const dedupedRows: GigInsertRow[] = [];
+  for (const row of rows) {
+    if (seenSourceIds.has(row.source_id)) {
+      skipped += 1;
+      continue;
+    }
+    seenSourceIds.add(row.source_id);
+    dedupedRows.push(row);
+  }
+
+  if (dedupedRows.length === 0) {
+    return { added: 0, updated: 0, skipped, errors: 0 };
   }
 
   const sb = createAdminClient();
-  const sourceUrls = rows.map((r) => r.source_url);
+  const sourceIds = dedupedRows.map((r) => r.source_id);
 
-  // Cek data duplikat di database berdasarkan source_url
+  // Pre-fetch which source_ids already exist so we can report adds vs updates.
+  // Keyed on source_id (the stable canonical id), NOT source_url — Adzuna's
+  // redirect_url is not stable across syncs.
   const { data: existing, error: selectErr } = await sb
     .from('gigs')
-    .select('source_url')
-    .in('source_url', sourceUrls);
-    
+    .select('source_id')
+    .in('source_id', sourceIds);
+
+  // A failure to pre-fetch is fatal for THIS source only — the caller wraps us
+  // in its own try/catch and will still report the other source's result.
   if (selectErr) throw selectErr;
-  
+
   const existingSet = new Set(
-    ((existing ?? []) as { source_url: string | null }[])
-      .map((r) => r.source_url)
+    ((existing ?? []) as { source_id: string | null }[])
+      .map((r) => r.source_id)
       .filter((v): v is string => Boolean(v)),
   );
 
   let added = 0;
   let updated = 0;
-  for (const row of rows) {
-    if (existingSet.has(row.source_url)) updated += 1;
+  let errors = 0;
+
+  // Upsert ONE ROW AT A TIME so a single violation (most commonly a residual
+  // `source_url` collision now that we arbitrate on source_id) is contained:
+  // it's counted as `errors` and the loop carries on to the next row instead of
+  // aborting the whole batch like a bulk upsert would.
+  for (const row of dedupedRows) {
+    const wasUpdate = existingSet.has(row.source_id);
+    const { error: upsertErr } = await sb
+      .from('gigs')
+      .upsert(row, { onConflict: 'source_id' });
+
+    if (upsertErr) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[adzuna-sync] upsert failed for ${row.source_id}:`,
+        upsertErr.message,
+      );
+      errors += 1;
+      continue;
+    }
+
+    if (wasUpdate) updated += 1;
     else added += 1;
   }
 
-  // Lakukan Upsert Tunggal ke database Supabase
-  const { error: upsertErr } = await sb
-    .from('gigs')
-    .upsert(rows, { onConflict: 'source_url' });
-    
-  if (upsertErr) throw upsertErr;
-
-  try {
-    revalidateTag('gigs');
-  } catch {
-    // noop - Cache akan refresh otomatis sesuai schedule jika Next.js cache gagal di-bust
+  // Only bust the cache if we actually changed something.
+  if (added > 0 || updated > 0) {
+    try {
+      revalidateTag('gigs');
+    } catch {
+      // noop - Cache akan refresh otomatis sesuai schedule jika Next.js cache gagal di-bust
+    }
   }
 
-  return { added, updated, skipped };
+  return { added, updated, skipped, errors };
 }

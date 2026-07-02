@@ -20,12 +20,26 @@ function isAuthorized(req: Request): boolean {
   return token.length === secret.length && token === secret;
 }
 
+/** Per-source stats returned in the cron response. `error` is set only when the
+ *  whole source fatally threw (e.g. missing credentials, upstream 5xx). */
+type SourceStats = {
+  added: number;
+  updated: number;
+  skipped: number;
+  error?: string;
+};
+
+/** Adzuna additionally reports per-row upsert errors (rows that conflicted or
+ *  otherwise failed individually without aborting the rest of its batch). */
+type AdzunaStats = SourceStats & { errors: number };
+
 type SyncResponse = {
   success: boolean;
-  added?: number;
-  updated?: number;
-  skipped?: number;
+  /** Present on the 401 path instead of per-source stats. */
   error?: string;
+  /** Present only after auth succeeds. */
+  remotive?: SourceStats;
+  adzuna?: AdzunaStats;
   timestamp: string;
 };
 
@@ -36,42 +50,54 @@ function unauthorized(): Response {
   );
 }
 
+/** Coerce a thrown value into a short string for the `error` field. */
+function errMsg(err: unknown): string {
+  return err instanceof Error ? err.message : 'unknown';
+}
+
 async function runSync(): Promise<Response> {
   const timestamp = new Date().toISOString();
+
+  // Run each source in its OWN try/catch. A fatal failure in one source (e.g.
+  // Adzuna credentials missing, or its API down) must NOT abort the other, and
+  // must NOT turn the whole cron into success:false — the response reports
+  // per-source stats so a degraded run is still visible.
+  let remotiveOk = true;
+  let remotive: SourceStats = { added: 0, updated: 0, skipped: 0 };
   try {
-    // 1. Jalankan Sync Remotive
-    const remotiveResult = await syncRemotive();
+    remotive = await syncRemotive();
     // eslint-disable-next-line no-console
-    console.log('[cron/fetch-jobs] Remotive sync OK:', remotiveResult);
-
-    // 2. Jalankan Sync Adzuna
-    const adzunaResult = await syncAdzuna();
-    // eslint-disable-next-line no-console
-    console.log('[cron/fetch-jobs] Adzuna sync OK:', adzunaResult);
-
-    // 3. Gabungkan hasil statistik dari kedua platform
-    const combinedResult = {
-      added: remotiveResult.added + adzunaResult.added,
-      updated: remotiveResult.updated + adzunaResult.updated,
-      skipped: remotiveResult.skipped + adzunaResult.skipped,
-    };
-
-    return NextResponse.json<SyncResponse>(
-      { success: true, ...combinedResult, timestamp },
-      { status: 200 },
-    );
+    console.log('[cron/fetch-jobs] Remotive sync OK:', remotive);
   } catch (err) {
+    remotiveOk = false;
+    remotive = { ...remotive, error: errMsg(err) };
     // eslint-disable-next-line no-console
-    console.error('[cron/fetch-jobs] Job sync FAILED:', err);
-    return NextResponse.json<SyncResponse>(
-      {
-        success: false,
-        error: err instanceof Error ? err.message : 'unknown',
-        timestamp,
-      },
-      { status: 500 },
-    );
+    console.error('[cron/fetch-jobs] Remotive sync FAILED:', err);
   }
+
+  let adzunaOk = true;
+  let adzuna: AdzunaStats = { added: 0, updated: 0, skipped: 0, errors: 0 };
+  try {
+    adzuna = await syncAdzuna();
+    // eslint-disable-next-line no-console
+    console.log('[cron/fetch-jobs] Adzuna sync OK:', adzuna);
+  } catch (err) {
+    adzunaOk = false;
+    adzuna = { ...adzuna, error: errMsg(err) };
+    // eslint-disable-next-line no-console
+    console.error('[cron/fetch-jobs] Adzuna sync FAILED:', err);
+  }
+
+  // The cron is considered successful if AT LEAST ONE source completed without
+  // a fatal error. Only when BOTH sources throw do we return a 500 (so the
+  // scheduler / alerting treats a total outage as a real failure). Per-row
+  // Adzuna `errors` do NOT count as fatal — they're surfaced in the response.
+  const success = remotiveOk || adzunaOk;
+
+  return NextResponse.json<SyncResponse>(
+    { success, remotive, adzuna, timestamp },
+    { status: success ? 200 : 500 },
+  );
 }
 
 /**
