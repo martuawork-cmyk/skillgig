@@ -1,50 +1,22 @@
 import 'server-only';
-import { NextResponse } from 'next/server';
-import { syncRemotive } from '@/lib/job-sync/remotive'; // Gunakan @/
-import { syncAdzuna } from '@/lib/job-sync/adzuna';   // Gunakan @/
-
-// ... sisa kode runSync dan syncJobsHandler yang kemarin tetap sama ...
 
 // =============================================================================
 // Shared handler for the job-sync cron routes
 // (app/api/cron/sync-jobs + app/api/cron/fetch-jobs).
-// -----------------------------------------------------------------------------
-// Both routes are thin wrappers around `syncJobsHandler` so they stay in lock-
-// step: identical auth, identical Remotive sync, identical response shape. The
-// route files only own the Next.js segment config (`runtime` / `dynamic`) and
-// the GET/POST signatures — everything substantive lives here.
-//
-// Auth: a shared secret. The `Authorization: Bearer <CRON_SECRET>` header must
-// match the server's CRON_SECRET env var. Vercel Cron injects this header
-// automatically (it reads CRON_SECRET from the project env); a manual trigger
-// can hit GET with the same header, e.g.:
-//
-//   curl -H "Authorization: Bearer $CRON_SECRET" \
-//        https://skillgig.id/api/cron/fetch-jobs
-//
-// Returns 200 { success, added, updated, skipped, timestamp }
-//         401 { success:false, error:'unauthorized' }   — bad/missing secret
-//         500 { success:false, error, timestamp }        — sync threw
-//
-// Rate note: Remotive asks for ≤4 syncs/day. Keep ONE cron entry in vercel.json
-// (it points at /api/cron/fetch-jobs). Both route paths invoke this handler, so
-// hitting either has the same effect — do NOT cron both or you double-sync.
 // =============================================================================
 
 import { NextResponse } from 'next/server';
-import { syncRemotive } from './remotive';
+import { syncRemotive } from '@/lib/job-sync/remotive';
+import { syncAdzuna } from '@/lib/job-sync/adzuna';
 
 /** True when the request carries the expected Bearer secret. */
 function isAuthorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
-  // No secret configured → deny everything (fail closed). Prevents an
-  // unconfigured deploy from becoming an open sync trigger.
   if (!secret) return false;
   const header = req.headers.get('authorization') ?? '';
   const token = header.startsWith('Bearer ')
     ? header.slice('Bearer '.length).trim()
     : header.trim();
-  // Constant-time-ish compare to avoid trivial secret timing leaks.
   return token.length === secret.length && token === secret;
 }
 
@@ -67,16 +39,30 @@ function unauthorized(): Response {
 async function runSync(): Promise<Response> {
   const timestamp = new Date().toISOString();
   try {
-    const result = await syncRemotive();
+    // 1. Jalankan Sync Remotive
+    const remotiveResult = await syncRemotive();
     // eslint-disable-next-line no-console
-    console.log('[cron/fetch-jobs] Remotive sync OK:', result);
+    console.log('[cron/fetch-jobs] Remotive sync OK:', remotiveResult);
+
+    // 2. Jalankan Sync Adzuna
+    const adzunaResult = await syncAdzuna();
+    // eslint-disable-next-line no-console
+    console.log('[cron/fetch-jobs] Adzuna sync OK:', adzunaResult);
+
+    // 3. Gabungkan hasil statistik dari kedua platform
+    const combinedResult = {
+      added: remotiveResult.added + adzunaResult.added,
+      updated: remotiveResult.updated + adzunaResult.updated,
+      skipped: remotiveResult.skipped + adzunaResult.skipped,
+    };
+
     return NextResponse.json<SyncResponse>(
-      { success: true, ...result, timestamp },
+      { success: true, ...combinedResult, timestamp },
       { status: 200 },
     );
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error('[cron/fetch-jobs] Remotive sync FAILED:', err);
+    console.error('[cron/fetch-jobs] Job sync FAILED:', err);
     return NextResponse.json<SyncResponse>(
       {
         success: false,
@@ -90,8 +76,7 @@ async function runSync(): Promise<Response> {
 
 /**
  * Shared GET/POST entry for the job-sync cron routes. Gates on the Bearer
- * secret, then runs the Remotive sync. Returns the Response directly so the
- * route file can `return syncJobsHandler(req)` from its GET/POST handlers.
+ * secret, then runs the combined Remotive + Adzuna sync.
  */
 export async function syncJobsHandler(req: Request): Promise<Response> {
   if (!isAuthorized(req)) return unauthorized();
