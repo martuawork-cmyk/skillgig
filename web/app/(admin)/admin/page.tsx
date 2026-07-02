@@ -12,6 +12,7 @@ import {
   adminLatestSubscribers,
 } from '@/lib/supabase/admin-queries';
 import { DeleteGigButton } from './gigs/DeleteGigButton';
+import { ApproveGigButton } from './gigs/ApproveGigButton';
 import { DeleteCourseButton } from './courses/DeleteCourseButton';
 
 export const dynamic = 'force-dynamic';
@@ -131,6 +132,7 @@ export default async function AdminDashboardPage() {
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center justify-end gap-2">
+                        <ApproveGigButton id={gig.id} status={gig.status} />
                         <Link
                           href={`/admin/gigs/${gig.id}`}
                           className="rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100"

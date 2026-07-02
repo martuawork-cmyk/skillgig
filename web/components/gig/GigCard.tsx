@@ -17,6 +17,7 @@ import {
   cn,
 } from '@/lib/utils';
 import { useSavedStore } from '@/lib/store/savedStore';
+import { track, AnalyticsEvent } from '@/lib/analytics';
 
 type Props = {
   gig: Gig;
@@ -32,6 +33,11 @@ export function GigCard({ gig }: Props) {
   const handleApply = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    track(AnalyticsEvent.GigApplyClicked, {
+      gig_id: gig.id,
+      platform: gig.platform,
+      job_type: gig.jobType,
+    });
     window.open(gig.url, '_blank', 'noopener,noreferrer');
   };
 
@@ -41,6 +47,7 @@ export function GigCard({ gig }: Props) {
     e.preventDefault();
     e.stopPropagation();
     const wasSaved = bookmarked;
+    if (!wasSaved) track(AnalyticsEvent.JobSaved, { gig_id: gig.id });
     void toggleSaveGig({
       id: gig.id,
       title: gig.titleId,

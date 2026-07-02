@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { SiteChrome } from '@/components/layout/SiteChrome';
+import { AnalyticsProvider } from '@/components/analytics/PostHogProvider';
 import { SavedHydrator } from '@/components/system/SavedHydrator';
 import { getCurrentUser } from '@/lib/supabase/session';
 import { getSiteMetadata, SITE_URL } from '@/lib/seo';
@@ -63,8 +64,10 @@ export default async function RootLayout({
             }),
           }}
         />
-        <SiteChrome user={headerUser}>{children}</SiteChrome>
-        <SavedHydrator />
+        <AnalyticsProvider>
+          <SiteChrome user={headerUser}>{children}</SiteChrome>
+          <SavedHydrator />
+        </AnalyticsProvider>
       </body>
     </html>
   );

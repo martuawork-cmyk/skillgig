@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { SITE_URL } from '@/lib/seo';
+import { CATEGORIES } from '@/lib/types';
 
 /**
  * Dynamic sitemap for SkillGig.id, served at `/sitemap.xml`.
@@ -29,6 +30,19 @@ const STATIC_ROUTES: MetadataRoute.Sitemap = [
   { url: abs('/about'), changeFrequency: 'monthly', priority: 0.7, lastModified: new Date() },
   { url: abs('/faq'), changeFrequency: 'monthly', priority: 0.6, lastModified: new Date() },
 ];
+
+/**
+ * Programmatic SEO landing pages — one URL per gig category
+ * (/remote-jobs/web-dev, /remote-jobs/design, …). Derived from the static
+ * GigCategory enum so the list is always in sync with the pre-rendered pages
+ * (generateStaticParams in app/remote-jobs/[category]/page.tsx).
+ */
+const REMOTE_JOB_CATEGORY_ROUTES: MetadataRoute.Sitemap = CATEGORIES.map((c) => ({
+  url: abs(`/remote-jobs/${c.value}`),
+  changeFrequency: 'weekly',
+  priority: 0.7,
+  lastModified: new Date(),
+}));
 
 interface GigRow {
   id: string;
@@ -65,5 +79,5 @@ export const revalidate = 3600; // 1 hour
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const gigs = await fetchPublishedGigs();
-  return [...STATIC_ROUTES, ...gigs];
+  return [...STATIC_ROUTES, ...REMOTE_JOB_CATEGORY_ROUTES, ...gigs];
 }

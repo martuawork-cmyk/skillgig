@@ -18,6 +18,10 @@ import 'server-only';
 // `gigs_source_url_key` (migration 015). `added` / `updated` counts are derived
 // by pre-fetching the existing source_urls for the incoming batch — cheaper and
 // more accurate than parsing the upsert response.
+//
+// We also stamp `source_id` (migration 016) = `remotive:<id>` — the upstream's
+// own stable primary key, namespaced by provider so a future Jobicy / multi-
+// source sync can dedup on it without colliding with Remotive ids.
 // =============================================================================
 
 import { revalidateTag } from 'next/cache';
@@ -149,6 +153,8 @@ type GigInsertRow = {
   is_remote: true;
   url: string;
   source_url: string;
+  /** Namespaced upstream id (`remotive:<id>`) — canonical dedup key. */
+  source_id: string;
   level: 'intermediate';
   description: string;
   skills: never[];
@@ -188,6 +194,8 @@ function toGigRow(job: RemotiveJob): GigInsertRow | null {
     // ToS: link the REAL Remotive URL — never redirect or rewrite it.
     url,
     source_url: url,
+    // Namespaced upstream id — the canonical dedup key (migration 016).
+    source_id: `remotive:${job.id}`,
     // Remotive exposes no seniority; "intermediate" is a neutral default.
     level: 'intermediate',
     description: makeDescription(job.description),

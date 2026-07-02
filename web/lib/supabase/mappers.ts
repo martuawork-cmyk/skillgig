@@ -160,6 +160,9 @@ export type GigRow = {
   /* Dedup key for synced listings (Remotive URL). Added by migration 015;
      absent (NULL) on legacy / mock / admin-created rows. */
   source_url?: string | null;
+  /* Namespaced upstream id (`remotive:<id>`). Added by migration 016;
+     absent (NULL) on legacy / mock / admin-created rows. */
+  source_id?: string | null;
 };
 
 export type SkillRow = {
@@ -244,6 +247,7 @@ export function mapGigRow(r: GigRow): Gig {
     platform: asGigPlatform(r.platform),
     url: r.url,
     sourceUrl: r.source_url ?? null,
+    sourceId: r.source_id ?? null,
     status: asGigStatus(r.status),
     company: r.company ?? null,
     company_logo: r.company_logo ?? null,

@@ -46,6 +46,10 @@ export interface Gig {
    *  imports). Backed by `gigs.source_url` (migration 015); powers the sync's
    *  `ON CONFLICT (source_url) DO UPDATE`. Absent on legacy/mock rows. */
   sourceUrl?: string | null;
+  /** Namespaced upstream primary key (`remotive:<id>`) for synced listings —
+   *  the canonical cross-provider dedup key (migration 016). Absent on
+   *  legacy / mock / admin-created rows. */
+  sourceId?: string | null;
   /** Lifecycle status controlled by the admin layer. Defaults to 'published'
    *  for legacy rows that pre-date migration 007. */
   status: GigStatus;

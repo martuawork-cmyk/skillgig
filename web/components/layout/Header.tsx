@@ -7,10 +7,11 @@ import { Logo } from '@/components/brand/Logo';
 import { cn } from '@/lib/utils';
 
 const NAV = [
-  { label: 'Learn',   href: '/learn'   },
-  { label: 'Earn',    href: '/earn'    },
-  { label: 'Jobs',    href: '/jobs'    },
-  { label: 'Roadmap', href: '/roadmap' },
+  { label: 'Dashboard', href: '/dashboard' },
+  { label: 'Learn',     href: '/learn'     },
+  { label: 'Earn',      href: '/earn'      },
+  { label: 'Jobs',      href: '/jobs'      },
+  { label: 'Roadmap',   href: '/roadmap'   },
 ];
 
 type Props = {

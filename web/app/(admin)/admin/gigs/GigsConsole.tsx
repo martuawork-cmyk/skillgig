@@ -3,11 +3,11 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
 import { PageHeader } from '@/components/admin/PageHeader';
-import { StatusBadge } from '@/components/admin/Badge';
 import { Toast } from '@/components/admin/Toast';
 import { formatIDR, formatDate, categoryColor, categoryLabel } from '@/lib/utils';
 import type { Gig, GigCategory, GigStatus } from '@/lib/types';
 import { GigForm } from './GigForm';
+import { GigStatusToggle } from './GigStatusToggle';
 import { DeleteGigButton } from './DeleteGigButton';
 
 const PAGE_SIZE = 10;
@@ -215,7 +215,7 @@ export function GigsConsole({ gigs }: Props) {
                         {formatIDR(gig.budgetMin)} – {formatIDR(gig.budgetMax)}
                       </td>
                       <td className="px-5 py-3">
-                        <StatusBadge status={gig.status} />
+                        <GigStatusToggle id={gig.id} status={gig.status} />
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-slate-500">
                         {formatDate(gig.postedAt)}

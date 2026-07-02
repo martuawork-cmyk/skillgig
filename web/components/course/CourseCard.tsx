@@ -7,6 +7,7 @@ import { useToast, Toast } from '@/components/ui/Toast';
 import { COURSE_PLATFORMS, coursePlatformIcon, type Course } from '@/lib/types';
 import { formatCoursePrice, formatCompact, levelColor, levelLabel, cn } from '@/lib/utils';
 import { useSavedStore } from '@/lib/store/savedStore';
+import { track, AnalyticsEvent } from '@/lib/analytics';
 
 type Props = {
   course: Course;
@@ -120,6 +121,7 @@ export function CourseCard({ course }: Props) {
         <StartLearningButton
           courseId={course.id}
           courseTitle={course.titleId}
+          platform={course.platform}
           fallbackUrl={fallbackUrl || '#'}
           canStart={canStart}
           onError={(msg) => showToast(msg, 'error')}
@@ -134,12 +136,14 @@ export function CourseCard({ course }: Props) {
 function StartLearningButton({
   courseId,
   courseTitle,
+  platform,
   fallbackUrl,
   canStart,
   onError,
 }: {
   courseId: string;
   courseTitle: string;
+  platform: string;
   fallbackUrl: string;
   canStart: boolean;
   onError: (msg: string) => void;
@@ -152,6 +156,13 @@ function StartLearningButton({
       onError('Kursus ini belum punya tautan tujuan.');
       return;
     }
+
+    // Fire the analytics event for every valid start intent (including
+    // modifier / middle-clicks, which fall through to the browser below).
+    track(AnalyticsEvent.CourseStartClicked, {
+      course_id: courseId,
+      platform,
+    });
 
     // Modifier-keys / middle-click → let the browser open in a new tab
     // untouched. We only intercept the "primary click" path so power users

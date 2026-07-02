@@ -49,10 +49,10 @@ export default async function Home() {
   const skills = ready ? await getSkillsForNewsletter() : [];
 
   const STATS = [
-    { value: formatCompact(stats.totalGigs),  label: 'Active gigs' },
-    { value: formatCompact(stats.totalUsers), label: 'Freelancers' },
-    { value: stats.avgBudgetMax != null ? formatIDR(Math.round(stats.avgBudgetMax)) : '—', label: 'Avg. project' },
-    { value: '4.8★', label: 'Client rating' },
+    { value: formatCompact(stats.totalGigs),  label: 'Active gigs',     icon: '💼', accent: 'from-indigo-500 to-violet-500' },
+    { value: formatCompact(stats.totalUsers), label: 'Freelancers',     icon: '👥', accent: 'from-emerald-500 to-teal-500' },
+    { value: stats.avgBudgetMax != null ? formatIDR(Math.round(stats.avgBudgetMax)) : '—', label: 'Avg. project', icon: '💸', accent: 'from-amber-500 to-orange-500' },
+    { value: '4.8★', label: 'Client rating',  icon: '⭐', accent: 'from-rose-500 to-pink-500' },
   ];
 
   return (
@@ -85,24 +85,43 @@ export default async function Home() {
               Semua dalam satu platform untuk freelancer Indonesia.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <ButtonLink href="/learn" size="lg">
-                🚀 Mulai Belajar
+              <ButtonLink
+                href="/learn"
+                size="lg"
+                className="px-7 py-3.5 text-base shadow-lg shadow-indigo-600/25 hover:shadow-xl hover:shadow-indigo-600/30"
+              >
+                <span aria-hidden>🚀</span> Mulai Belajar
               </ButtonLink>
-              <ButtonLink href="/gigs" variant="secondary" size="lg">
+              <ButtonLink
+                href="/gigs"
+                variant="secondary"
+                size="lg"
+                className="px-7 py-3.5 text-base shadow-md"
+              >
                 Cari Gig →
               </ButtonLink>
             </div>
           </div>
 
           {/* Stats */}
-          <div className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             {STATS.map((s) => (
               <div
                 key={s.label}
-                className="px-4 py-3 bg-white/70 backdrop-blur border border-slate-200 rounded-xl"
+                className="flex items-center gap-3 px-4 py-3.5 bg-white/80 backdrop-blur border border-slate-200 rounded-2xl shadow-md shadow-slate-900/5 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-900/10"
               >
-                <p className="text-2xl font-extrabold text-slate-900">{s.value}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
+                <span
+                  aria-hidden
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${s.accent} text-lg shadow-sm`}
+                >
+                  {s.icon}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-tight truncate">
+                    {s.value}
+                  </p>
+                  <p className="text-xs text-slate-600 font-medium mt-0.5">{s.label}</p>
+                </div>
               </div>
             ))}
           </div>

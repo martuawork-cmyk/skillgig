@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import {
+  adminApproveGig,
   adminCreateGig,
   adminDeleteGig,
   adminSetGigStatus,
@@ -126,6 +127,18 @@ export async function updateGigAction(
 
 export async function setGigStatusAction(id: string, status: GigStatus): Promise<void> {
   await adminSetGigStatus(id, status);
+  revalidatePath('/admin');
+  revalidatePath('/admin/gigs');
+  revalidateTag('gigs');
+}
+
+/**
+ * Dedicated Approve action — publishes a gig via `adminApproveGig` (which also
+ * fires the Telegram notification). Used by the dashboard's one-click Approve
+ * button so the moderation intent is explicit at the action layer.
+ */
+export async function approveGigAction(id: string): Promise<void> {
+  await adminApproveGig(id);
   revalidatePath('/admin');
   revalidatePath('/admin/gigs');
   revalidateTag('gigs');

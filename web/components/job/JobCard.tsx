@@ -9,6 +9,7 @@ import type { Gig } from '@/lib/types';
 import { formatSalaryRange, timeAgo, jobTypeColor, cn } from '@/lib/utils';
 import { jobLevelLabel, jobCategoryLabel, isSalaryHidden, jobLocation } from '@/lib/job-utils';
 import { useSavedStore } from '@/lib/store/savedStore';
+import { track, AnalyticsEvent } from '@/lib/analytics';
 
 type Props = {
   gig: Gig;
@@ -30,6 +31,11 @@ export function JobCard({ gig }: Props) {
   const handleApply = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    track(AnalyticsEvent.GigApplyClicked, {
+      gig_id: gig.id,
+      platform: gig.platform,
+      job_type: gig.jobType,
+    });
     window.open(gig.url, '_blank', 'noopener,noreferrer');
   };
 
@@ -40,6 +46,7 @@ export function JobCard({ gig }: Props) {
     e.preventDefault();
     e.stopPropagation();
     const wasSaved = bookmarked;
+    if (!wasSaved) track(AnalyticsEvent.JobSaved, { gig_id: gig.id });
     void toggleSaveGig({
       id: gig.id,
       title: gig.titleId,
@@ -67,12 +74,12 @@ export function JobCard({ gig }: Props) {
               <p className="text-sm font-semibold text-slate-700 truncate">
                 {gig.company || gig.platform}
               </p>
-              <p className="text-xs text-slate-500 truncate flex items-center gap-1">
+              <p className="text-xs text-slate-600 truncate flex items-center gap-1">
                 <span aria-hidden>📍</span>
                 {location}
               </p>
             </div>
-            <span className="ml-auto text-xs text-slate-400 shrink-0">
+            <span className="ml-auto text-xs text-slate-500 shrink-0">
               {timeAgo(gig.postedAt)}
             </span>
           </div>
@@ -101,14 +108,14 @@ export function JobCard({ gig }: Props) {
           </div>
 
           {/* Salary */}
-          <p className="font-bold text-slate-900 text-sm">
+          <p className="text-base font-extrabold text-slate-900">
             {salaryHidden
               ? 'Gaji nego'
               : formatSalaryRange(salaryMin, salaryMax, gig.salaryCurrency ?? 'IDR')}
           </p>
 
           {/* Snippet */}
-          <p className="text-xs text-slate-500 line-clamp-2">{gig.descriptionId}</p>
+          <p className="text-xs text-slate-600 line-clamp-2">{gig.descriptionId}</p>
 
           {/* Action buttons — siblings of the title link (not nested) */}
           <div className="pt-3 border-t border-slate-100 mt-auto flex items-center gap-2">

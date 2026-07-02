@@ -29,6 +29,8 @@ import type {
   User,
   Application,
 } from '@/lib/types';
+import { notifyJobApproved } from '@/lib/telegram';
+import { tagsFromGig } from '@/lib/tagging';
 
 /* =============================================================================
  * Input shapes for create/update
@@ -303,6 +305,58 @@ export async function adminSetGigStatus(id: string, status: GigStatus): Promise<
   const sb = createAdminClient();
   const { error } = await sb.from('gigs').update({ status }).eq('id', id);
   if (error) throw error;
+  // When a listing goes live, ping the Telegram moderation channel. Best-effort
+  // and fire-and-forget: a notification failure must never roll back the status
+  // update above. No-op when Telegram env vars aren't configured.
+  if (status === 'published') {
+    void notifyGigApproved(sb, id).catch(() => {
+      /* swallow — see note above */
+    });
+  }
+}
+
+/**
+ * Approve a gig — the canonical "Publish" moderation action. Moves a draft /
+ * expired listing to `published` so it appears on the public boards, and fires
+ * the Telegram approval notification via `adminSetGigStatus`. Thin named
+ * wrapper so the moderation intent ("Approve") reads explicitly at the call
+ * site instead of a bare status string.
+ */
+export async function adminApproveGig(id: string): Promise<void> {
+  await adminSetGigStatus(id, 'published');
+}
+
+/**
+ * Fetch the just-updated gig and push a Telegram approval notification for it.
+ * Internal to adminSetGigStatus — not exported. Reuses the caller's admin
+ * client to avoid a second service-role instantiation.
+ */
+async function notifyGigApproved(
+  sb: ReturnType<typeof createAdminClient>,
+  id: string,
+): Promise<void> {
+  const { data, error } = await sb
+    .from('gigs')
+    .select(
+      'id, title, company, company_logo, platform, category, job_type, budget_min, budget_max, salary_currency, location, is_remote, url, level, description, skills, duration_weeks, applicants_count, created_at, status, source_url, source_id',
+    )
+    .eq('id', id)
+    .maybeSingle();
+  if (error || !data) return;
+  const gig = mapGigRow(data as GigRow);
+  await notifyJobApproved({
+    id: gig.id,
+    title: gig.title,
+    company: gig.company,
+    url: gig.url,
+    category: gig.category,
+    location: gig.location,
+    jobType: gig.jobType,
+    salaryMin: gig.salaryMin,
+    salaryMax: gig.salaryMax,
+    salaryCurrency: gig.salaryCurrency,
+    tags: tagsFromGig(gig),
+  });
 }
 
 export async function adminDeleteGig(id: string): Promise<void> {

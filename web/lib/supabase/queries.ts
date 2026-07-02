@@ -663,6 +663,31 @@ export const getPublishedGigsByCategory = cached(
 );
 
 /**
+ * Full published-gigs list for a category — backs the programmatic SEO landing
+ * pages at /remote-jobs/[category]. Unlike getPublishedGigsByCategory (a 3-row
+ * roadmap preview ranked by budget), this returns up to 60 newest listings so
+ * the category page has real, indexable content. Cached the same way (1h,
+ * tagged 'gigs' so admin mutations bust it).
+ */
+export const getAllPublishedGigsByCategory = cached(
+  async (category: GigCategory): Promise<Gig[]> =>
+    safeQuery('getAllPublishedGigsByCategory', async () => {
+      const sb = createPublicClient();
+      const { data, error } = await sb
+        .from('gigs')
+        .select('*')
+        .eq('category', category)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(60);
+      if (error) throw error;
+      return (data ?? []).map(mapGigRow);
+    }, []),
+  ['getAllPublishedGigsByCategory'],
+  ['gigs'],
+);
+
+/**
  * Average budget (IDR) across the published gigs in a category. Computed in
  * SQL so we don't pull every gig row across the wire just to reduce locally.
  *

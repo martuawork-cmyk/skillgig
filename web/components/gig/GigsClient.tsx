@@ -6,7 +6,10 @@ import { Card, CardBody } from '@/components/ui/Card';
 import { StatsGrid } from '@/components/ui/StatsGrid';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FilterPills } from '@/components/ui/FilterPills';
+import { ViewToggle } from '@/components/ui/ViewToggle';
 import { GigCard } from '@/components/gig/GigCard';
+import { GigListItem } from '@/components/gig/GigListItem';
+import { useViewPreference, limitForView } from '@/lib/hooks/useViewPreference';
 import {
   CATEGORIES,
   LEVELS,
@@ -38,6 +41,8 @@ export function GigsClient({
   // On mobile the filter sidebar collapses into an accordion; on `lg+` it is
   // always expanded (the toggle button is hidden and the panel is shown).
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // List ⇄ Grid view — shared preference persisted to localStorage.
+  const { view, setView } = useViewPreference();
   const savedCount = useSavedStore((s) => s.savedGigs.length);
   const storeHydrated = useSavedStore((s) => s._hasHydrated);
 
@@ -68,6 +73,9 @@ export function GigsClient({
     }
     return list;
   }, [initialGigs, q, cat, level, sort]);
+
+  // Per-mode item cap: grid shows 12, list shows 15 (see useViewPreference).
+  const shown = limitForView(filtered, view);
 
   // The job-type filter is URL-driven (shareable ?job_type=) and resolved
   // server-side, so changing it navigates rather than mutating local state.
@@ -238,15 +246,18 @@ export function GigsClient({
 
         {/* Results */}
         <div className="lg:col-span-3">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <p className="text-sm text-slate-600">
               <span className="font-semibold text-slate-900">{filtered.length}</span> gigs ditemukan
             </p>
-            {hydrated && storeHydrated && savedCount > 0 && (
-              <p className="text-xs text-emerald-700">
-                🔖 {savedCount} tersimpan
-              </p>
-            )}
+            <div className="flex items-center gap-3">
+              {hydrated && storeHydrated && savedCount > 0 && (
+                <p className="text-xs text-emerald-700">
+                  🔖 {savedCount} tersimpan
+                </p>
+              )}
+              <ViewToggle view={view} onChange={setView} />
+            </div>
           </div>
           {filtered.length === 0 ? (
             <EmptyState
@@ -258,13 +269,19 @@ export function GigsClient({
                 </button>
               }
             />
-          ) : (
+          ) : view === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {filtered.map((g) => (
+              {shown.map((g) => (
                 <GigCard
                   key={g.id}
                   gig={g}
                 />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {shown.map((g) => (
+                <GigListItem key={g.id} gig={g} />
               ))}
             </div>
           )}
