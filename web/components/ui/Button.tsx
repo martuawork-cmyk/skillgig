@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
-type Size = 'sm' | 'md' | 'lg';
+type Size = 'sm' | 'md' | 'lg' | 'xl';
 
 const base =
   'inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none';
@@ -23,6 +23,11 @@ const sizes: Record<Size, string> = {
   sm: 'px-3 py-1.5 text-xs',
   md: 'px-4 py-2.5 text-sm',
   lg: 'px-5 py-3 text-sm',
+  // Hero CTA size — large enough to read as the primary call-to-action.
+  // Kept as a named variant (not a one-off className) because `cn()` doesn't
+  // dedupe Tailwind classes, so a `px-*`/`py-*`/`text-*` className on top of
+  // another size would silently collide depending on stylesheet order.
+  xl: 'px-8 py-4 text-lg',
 };
 
 type ButtonProps = ComponentProps<'button'> & {

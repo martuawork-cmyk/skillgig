@@ -4,7 +4,8 @@ import { Card, CardBody } from '@/components/ui/Card';
 type Props = {
   title: string;
   description?: string;
-  icon?: string;
+  /** Emoji string OR a Lucide icon element. Defaults to an empty-box emoji. */
+  icon?: React.ReactNode;
   /** Optional CTA — link-based. */
   cta?: { label: string; href: string };
   /** Optional secondary action — button-based (caller handles onClick via spread). */

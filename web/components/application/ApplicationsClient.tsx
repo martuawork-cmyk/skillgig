@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { Inbox } from 'lucide-react';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
@@ -76,10 +77,14 @@ export function ApplicationsClient({
 
         {filtered.length === 0 ? (
           <EmptyState
-            icon="📭"
+            icon={<Inbox className="h-6 w-6 text-indigo-500" />}
             title={initialApps.length === 0 ? 'Belum ada lamaran.' : 'Tidak ada lamaran dengan status ini.'}
-            description={initialApps.length === 0 ? 'Cari gig pertamamu dan kirim proposal.' : undefined}
-            cta={initialApps.length === 0 ? { label: 'Cari gig pertama', href: '/earn' } : undefined}
+            description={
+              initialApps.length === 0
+                ? 'Cari gig dan kirim proposal pertamamu untuk memulai.'
+                : undefined
+            }
+            cta={initialApps.length === 0 ? { label: 'Mulai melamar', href: '/gigs' } : undefined}
           />
         ) : (
           <div className="space-y-3">

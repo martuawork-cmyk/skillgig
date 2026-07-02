@@ -86,6 +86,15 @@ export async function saveItem(
     const userId = await getCurrentUserId();
 
     if (userId) {
+      // NOTE: `ignoreDuplicates: true` + `.single()` is a footgun. When the row
+      // already exists, ON CONFLICT DO NOTHING returns *zero* rows, and
+      // `.single()` then throws a PGRST116 ("no rows found") error — NOT the
+      // 23505 unique-violation we used to catch. That surfaced as a false
+      // `{ ok: false }`, which made the optimistic-save layer roll the item
+      // back out of the UI (save button flicked back to "Simpan") and flooded
+      // the console with spurious errors during `syncPendingSaves`.
+      // `.maybeSingle()` returns `data: null` on the duplicate path, which we
+      // treat as success and resolve to the canonical row.
       const { data, error } = await sb
         .from('saved_items')
         .upsert(
@@ -93,23 +102,35 @@ export async function saveItem(
           { onConflict: 'user_id,item_type,item_id', ignoreDuplicates: true },
         )
         .select('*')
-        .single();
-      if (error) {
-        // Postgres 23505 = unique_violation — treat as success and fetch the
-        // existing row.
-        if (error.code === '23505') {
-          const { data: existing } = await sb
-            .from('saved_items')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('item_type', itemType)
-            .eq('item_id', itemId)
-            .maybeSingle();
-          if (existing) return { ok: true, data: existing as SavedItemRow };
-        }
-        return { ok: false, error: error.message };
-      }
-      return { ok: true, data: data as SavedItemRow };
+        .maybeSingle();
+      if (error) return { ok: false, error: error.message };
+      if (data) return { ok: true, data: data as SavedItemRow };
+
+      // Row already existed (ignoreDuplicates returned nothing) — fetch the
+      // canonical row so callers get the real `created_at`.
+      const { data: existing, error: fetchErr } = await sb
+        .from('saved_items')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('item_type', itemType)
+        .eq('item_id', itemId)
+        .maybeSingle();
+      if (fetchErr) return { ok: false, error: fetchErr.message };
+      if (existing) return { ok: true, data: existing as SavedItemRow };
+
+      // Vanishingly unlikely (row gone between upsert + fetch) — synthesize so
+      // the Result<SavedItemRow> contract holds and callers stay happy.
+      return {
+        ok: true,
+        data: {
+          id: '',
+          user_id: userId,
+          session_id: null,
+          item_type: itemType,
+          item_id: itemId,
+          created_at: new Date(0).toISOString(),
+        },
+      };
     }
 
     // Anonymous session path — go through RPC.

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { Compass } from 'lucide-react';
 import { SkillAutocomplete, type SkillHit } from './SkillAutocomplete';
 import { RoadmapSkeleton } from './RoadmapSkeleton';
 import {
@@ -166,15 +167,15 @@ export function RoadmapExplorer() {
 function EmptyPickState() {
   return (
     <div className="text-center py-12 sm:py-16 px-4">
-      <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 grid place-items-center text-3xl mb-4">
-        🗺️
+      <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 grid place-items-center mb-4">
+        <Compass className="h-8 w-8 text-indigo-500" />
       </div>
       <h2 className="text-lg font-bold text-slate-900 mb-1">
-        Pilih skill untuk lihat roadmap
+        Ketik skill yang ingin kamu pelajari
       </h2>
       <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
         Dari &ldquo;belum bisa apa-apa&rdquo; sampai &ldquo;bisa menghasilkan&rdquo; &mdash;
-        kursus, gig, dan estimasi pendapatan berdasarkan data Supabase.
+        pilih skill untuk lihat kursus, gig, dan estimasi pendapatan.
       </p>
     </div>
   );

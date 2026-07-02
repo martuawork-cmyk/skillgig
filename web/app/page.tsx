@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { Briefcase, Users, Wallet, Star } from 'lucide-react';
 import { Card, CardBody } from '@/components/ui/Card';
 import { ButtonLink } from '@/components/ui/Button';
 import { GigCard } from '@/components/gig/GigCard';
@@ -49,10 +50,10 @@ export default async function Home() {
   const skills = ready ? await getSkillsForNewsletter() : [];
 
   const STATS = [
-    { value: formatCompact(stats.totalGigs),  label: 'Active gigs',     icon: '💼', accent: 'from-indigo-500 to-violet-500' },
-    { value: formatCompact(stats.totalUsers), label: 'Freelancers',     icon: '👥', accent: 'from-emerald-500 to-teal-500' },
-    { value: stats.avgBudgetMax != null ? formatIDR(Math.round(stats.avgBudgetMax)) : '—', label: 'Avg. project', icon: '💸', accent: 'from-amber-500 to-orange-500' },
-    { value: '4.8★', label: 'Client rating',  icon: '⭐', accent: 'from-rose-500 to-pink-500' },
+    { value: formatCompact(stats.totalGigs),  label: 'Active gigs',     Icon: Briefcase, accent: 'from-indigo-500 to-violet-500' },
+    { value: formatCompact(stats.totalUsers), label: 'Freelancers',     Icon: Users,     accent: 'from-emerald-500 to-teal-500' },
+    { value: stats.avgBudgetMax != null ? formatIDR(Math.round(stats.avgBudgetMax)) : '—', label: 'Avg. project', Icon: Wallet, accent: 'from-amber-500 to-orange-500' },
+    { value: '4.8★', label: 'Client rating',  Icon: Star,              accent: 'from-rose-500 to-pink-500' },
   ];
 
   return (
@@ -87,16 +88,16 @@ export default async function Home() {
             <div className="mt-8 flex flex-wrap gap-3">
               <ButtonLink
                 href="/learn"
-                size="lg"
-                className="px-7 py-3.5 text-base shadow-lg shadow-indigo-600/25 hover:shadow-xl hover:shadow-indigo-600/30"
+                size="xl"
+                className="shadow-lg shadow-indigo-600/25 hover:shadow-xl hover:shadow-indigo-600/30"
               >
                 <span aria-hidden>🚀</span> Mulai Belajar
               </ButtonLink>
               <ButtonLink
                 href="/gigs"
                 variant="secondary"
-                size="lg"
-                className="px-7 py-3.5 text-base shadow-md"
+                size="xl"
+                className="shadow-md"
               >
                 Cari Gig →
               </ButtonLink>
@@ -112,9 +113,9 @@ export default async function Home() {
               >
                 <span
                   aria-hidden
-                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${s.accent} text-lg shadow-sm`}
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${s.accent} shadow-sm`}
                 >
-                  {s.icon}
+                  <s.Icon className="h-5 w-5 text-white" />
                 </span>
                 <div className="min-w-0">
                   <p className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-tight truncate">

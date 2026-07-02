@@ -24,6 +24,12 @@ import { cn } from '@/lib/utils';
 
 type Sort = 'newest' | 'budget-high' | 'budget-low' | 'applicants';
 
+// Shared styling for the mobile dropdown selects (mirrors /jobs). Active
+// filters get an indigo ring so the user can see what's applied at a glance.
+const gigSelectCls =
+  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 font-medium ' +
+  'outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 transition cursor-pointer';
+
 export function GigsClient({
   initialGigs,
   activeJobType = 'all',
@@ -38,9 +44,6 @@ export function GigsClient({
   const [level, setLevel] = useState<SkillLevel | 'all'>('all');
   const [sort, setSort] = useState<Sort>('newest');
   const [hydrated, setHydrated] = useState(false);
-  // On mobile the filter sidebar collapses into an accordion; on `lg+` it is
-  // always expanded (the toggle button is hidden and the panel is shown).
-  const [filtersOpen, setFiltersOpen] = useState(false);
   // List ⇄ Grid view — shared preference persisted to localStorage.
   const { view, setView } = useViewPreference();
   const savedCount = useSavedStore((s) => s.savedGigs.length);
@@ -88,13 +91,6 @@ export function GigsClient({
     setQ(''); setCat('all'); setLevel('all'); setSort('newest');
     if (activeJobType !== 'all') router.push('/gigs');
   }
-
-  // How many non-default filters are active — shown as a badge on the mobile
-  // toggle so users know filters are applied while the panel is collapsed.
-  const activeCount =
-    (cat !== 'all' ? 1 : 0) +
-    (level !== 'all' ? 1 : 0) +
-    (activeJobType !== 'all' ? 1 : 0);
 
   // Stats
   const totalGigs = initialGigs.length;
@@ -156,41 +152,76 @@ export function GigsClient({
         </CardBody>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Filters sidebar — collapses into an accordion below `lg` */}
-        <aside className="lg:col-span-1 space-y-4">
-          {/* Mobile accordion toggle (hidden on desktop) */}
-          <button
-            type="button"
-            onClick={() => setFiltersOpen((v) => !v)}
-            aria-expanded={filtersOpen}
-            aria-controls="gig-filters-panel"
-            className="lg:hidden w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl shadow-soft transition hover:border-indigo-300"
-          >
-            <span className="flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
-              </svg>
-              Filter
-              {activeCount > 0 && (
-                <span className="inline-grid place-items-center min-w-[1.25rem] h-5 px-1 text-[11px] font-bold text-white bg-indigo-600 rounded-full">
-                  {activeCount}
-                </span>
-              )}
-            </span>
-            <svg
-              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden
-              className={cn('transition-transform', filtersOpen && 'rotate-180')}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* MOBILE filters — compact <select> dropdowns (below md / 768px).
+            A wall of chips wraps awkwardly on phones, so on small screens we
+            swap the chip sidebar for three tidy dropdowns. Desktop keeps the
+            chip sidebar further below. */}
+        <Card className="md:hidden">
+          <CardBody className="space-y-3">
+            <div>
+              <label htmlFor="gig-filter-cat" className="block text-xs font-bold text-slate-900 mb-1.5">
+                Kategori
+              </label>
+              <select
+                id="gig-filter-cat"
+                value={cat}
+                onChange={(e) => setCat(e.target.value as GigCategory | 'all')}
+                aria-label="Filter gigs berdasarkan kategori"
+                className={cn(gigSelectCls, cat !== 'all' && 'border-indigo-300 ring-1 ring-indigo-200')}
+              >
+                <option value="all">Semua</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="gig-filter-level" className="block text-xs font-bold text-slate-900 mb-1.5">
+                Level
+              </label>
+              <select
+                id="gig-filter-level"
+                value={level}
+                onChange={(e) => setLevel(e.target.value as SkillLevel | 'all')}
+                aria-label="Filter gigs berdasarkan level"
+                className={cn(gigSelectCls, level !== 'all' && 'border-indigo-300 ring-1 ring-indigo-200')}
+              >
+                <option value="all">Semua level</option>
+                {LEVELS.map((l) => (
+                  <option key={l.value} value={l.value}>{l.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="gig-filter-type" className="block text-xs font-bold text-slate-900 mb-1.5">
+                Tipe Kerja
+              </label>
+              <select
+                id="gig-filter-type"
+                value={activeJobType}
+                onChange={(e) => onChangeJobType(e.target.value as GigJobType | 'all')}
+                aria-label="Filter gigs berdasarkan tipe kerja"
+                className={cn(gigSelectCls, activeJobType !== 'all' && 'border-indigo-300 ring-1 ring-indigo-200')}
+              >
+                <option value="all">Semua</option>
+                {JOB_TYPES.map((j) => (
+                  <option key={j.value} value={j.value}>{j.label}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={reset}
+              className="w-full text-xs font-medium text-slate-500 hover:text-slate-700 py-1.5"
             >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-          </button>
+              Reset filter
+            </button>
+          </CardBody>
+        </Card>
 
-          {/* Panel: hidden when collapsed on mobile, always visible on `lg+` */}
-          <Card
-            id="gig-filters-panel"
-            className={cn(!filtersOpen && 'hidden lg:block')}
-          >
+        {/* DESKTOP filters — chip sidebar (md and up). Pills stay as-is. */}
+        <aside className="hidden md:block md:col-span-1">
+          <Card>
             <CardBody className="space-y-5">
               <div>
                 <h2 className="text-sm font-bold text-slate-900 mb-2">Kategori</h2>
@@ -245,7 +276,7 @@ export function GigsClient({
         </aside>
 
         {/* Results */}
-        <div className="lg:col-span-3">
+        <div className="md:col-span-3">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <p className="text-sm text-slate-600">
               <span className="font-semibold text-slate-900">{filtered.length}</span> gigs ditemukan

@@ -1,5 +1,6 @@
 'use client';
 
+import { Bookmark } from 'lucide-react';
 import { useSavedStore } from '@/lib/store/savedStore';
 import { SavedItemsGrid } from './SavedItemsGrid';
 
@@ -28,13 +29,28 @@ export function ProfileSavedSections() {
   const hasAny = savedCourses.length > 0 || savedGigs.length > 0 || skillAlerts.length > 0;
   if (!hasAny) {
     return (
-      <div className="text-center py-10 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
-        <p className="text-2xl mb-1">📌</p>
-        <p className="text-sm font-semibold text-slate-700">Belum ada yang disimpan</p>
-        <p className="text-xs text-slate-500 mt-1">
-          Mulai save kursus & gig favorit dari <a href="/learn" className="text-indigo-600 font-semibold hover:underline">/learn</a> atau{' '}
-          <a href="/earn" className="text-indigo-600 font-semibold hover:underline">/earn</a>.
+      <div className="text-center py-12 px-4 bg-gradient-to-b from-slate-50 to-white border border-dashed border-slate-200 rounded-2xl">
+        <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 grid place-items-center mb-4">
+          <Bookmark className="h-7 w-7 text-indigo-500" />
+        </div>
+        <p className="text-sm font-bold text-slate-800">Belum ada yang disimpan</p>
+        <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+          Simpan kursus dan gig favorit untuk kembali lagi nanti.
         </p>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          <a
+            href="/gigs"
+            className="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition active:scale-[.98]"
+          >
+            Jelajahi gig →
+          </a>
+          <a
+            href="/learn"
+            className="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:text-indigo-700 transition"
+          >
+            Lihat kursus
+          </a>
+        </div>
       </div>
     );
   }
