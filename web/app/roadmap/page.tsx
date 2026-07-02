@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { RoadmapExplorer } from '@/components/roadmap/RoadmapExplorer';
-import { TopRoadmapRecommendations } from '@/components/roadmap/TopRoadmapRecommendations';
+import { buildRoadmapPicks } from '@/components/roadmap/categoryMeta';
 import { buildMetadata } from '@/lib/seo';
+import { getAllSkills } from '@/lib/supabase/queries';
 
 export const metadata: Metadata = buildMetadata({
   title: 'Roadmap Karier Freelance Indonesia | SkillGig.id',
@@ -10,10 +11,15 @@ export const metadata: Metadata = buildMetadata({
   path: '/roadmap',
 });
 
-export default function RoadmapPage() {
+export default async function RoadmapPage() {
+  // Curated "top" recommendations — one representative skill per category,
+  // computed server-side so the client explorer just renders them. Clicking a
+  // card selects the skill and fetches its roadmap in place (no redirect).
+  const picks = buildRoadmapPicks(await getAllSkills());
+
   return (
     <div className="space-y-12">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <header className="mb-4 sm:mb-6 px-1">
           <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 mb-1">
             <span>🗺️</span> EKSPLORASI SKILL
@@ -26,14 +32,8 @@ export default function RoadmapPage() {
           </p>
         </header>
 
-        <RoadmapExplorer />
+        <RoadmapExplorer recommendations={picks} />
       </div>
-
-      {/* Top rekomendasi — fills what used to be empty whitespace below the
-          explorer and gives first-time visitors a curated starting point. */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <TopRoadmapRecommendations />
-      </section>
     </div>
   );
 }

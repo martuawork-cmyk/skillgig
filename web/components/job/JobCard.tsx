@@ -6,9 +6,10 @@ import { Badge } from '@/components/ui/Badge';
 import { useToast, Toast } from '@/components/ui/Toast';
 import { CompanyLogo } from '@/components/job/CompanyLogo';
 import type { Gig } from '@/lib/types';
-import { formatSalaryRange, timeAgo, jobTypeColor, cn } from '@/lib/utils';
+import { formatSalaryRange, timeAgo, jobTypeColor, isUrlUnavailable, cn } from '@/lib/utils';
 import { jobLevelLabel, jobCategoryLabel, isSalaryHidden, jobLocation } from '@/lib/job-utils';
 import { useSavedStore } from '@/lib/store/savedStore';
+import { UrlUnavailableBadge } from '@/components/ui/UrlUnavailableBadge';
 import { track, AnalyticsEvent } from '@/lib/analytics';
 
 type Props = {
@@ -26,11 +27,16 @@ export function JobCard({ gig }: Props) {
   const toggleSaveGig = useSavedStore((s) => s.toggleSaveGig);
   const { toast, showToast } = useToast();
 
+  // Seed jobs sometimes carry a fake/placeholder URL — detect once so we can
+  // disable "Lamar" and explain why.
+  const urlBad = isUrlUnavailable(gig.url);
+
   // Real jobs live on external platforms (Remotive, LinkedIn, …) — "Lamar"
   // opens the listing in a new tab rather than routing to an internal page.
   const handleApply = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (urlBad) return;
     track(AnalyticsEvent.GigApplyClicked, {
       gig_id: gig.id,
       platform: gig.platform,
@@ -105,6 +111,7 @@ export function JobCard({ gig }: Props) {
             <Badge className="bg-violet-100 text-violet-700">
               {jobLevelLabel(gig.level)}
             </Badge>
+            {urlBad && <UrlUnavailableBadge />}
           </div>
 
           {/* Salary */}
@@ -122,7 +129,12 @@ export function JobCard({ gig }: Props) {
             <button
               type="button"
               onClick={handleApply}
-              className="flex-1 px-3 py-2 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition active:scale-[.98]"
+              disabled={urlBad}
+              aria-disabled={urlBad}
+              className={cn(
+                'flex-1 px-3 py-2 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition active:scale-[.98]',
+                urlBad && 'opacity-50 cursor-not-allowed',
+              )}
             >
               Lamar
             </button>

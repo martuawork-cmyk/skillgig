@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Compass } from 'lucide-react';
 import { SkillAutocomplete, type SkillHit } from './SkillAutocomplete';
 import { RoadmapSkeleton } from './RoadmapSkeleton';
+import { RoadmapPicks } from './RoadmapPicks';
+import type { RoadmapPick } from './categoryMeta';
 import {
   RealRoadmapTimeline,
   type RealRoadmapEstimate,
@@ -30,7 +32,16 @@ type FetchState =
   | { kind: 'ok'; courses: Course[]; gigs: Gig[]; estimate: RealRoadmapEstimate }
   | { kind: 'error'; message: string };
 
-export function RoadmapExplorer() {
+export function RoadmapExplorer({
+  recommendations = [],
+}: {
+  /**
+   * Curated "top" skills (one per category), computed server-side in the
+   * /roadmap page. Rendered as clickable cards in the idle state so a click
+   * selects the skill and fetches its roadmap in place — no redirect.
+   */
+  recommendations?: RoadmapPick[];
+}) {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<SkillHit | null>(null);
   const [state, setState] = useState<FetchState>({ kind: 'idle' });
@@ -116,7 +127,16 @@ export function RoadmapExplorer() {
       </div>
 
       {/* Result */}
-      {!selected && state.kind === 'idle' && <EmptyPickState />}
+      {!selected && state.kind === 'idle' && (
+        <>
+          <EmptyPickState />
+          {recommendations.length > 0 && (
+            <div className="mt-10">
+              <RoadmapPicks picks={recommendations} onPick={onPick} />
+            </div>
+          )}
+        </>
+      )}
 
       {selected && state.kind === 'loading' && (
         <div>

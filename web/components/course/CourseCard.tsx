@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { useToast, Toast } from '@/components/ui/Toast';
 import { COURSE_PLATFORMS, coursePlatformIcon, type Course } from '@/lib/types';
-import { formatCoursePrice, formatCompact, levelColor, levelLabel, cn } from '@/lib/utils';
+import { formatCoursePrice, formatCompact, levelColor, levelLabel, isUrlUnavailable, cn } from '@/lib/utils';
 import { useSavedStore } from '@/lib/store/savedStore';
+import { UrlUnavailableBadge } from '@/components/ui/UrlUnavailableBadge';
 import { track, AnalyticsEvent } from '@/lib/analytics';
 
 type Props = {
@@ -34,11 +34,15 @@ export function CourseCard({ course }: Props) {
   };
 
   // Affiliate target: admin-set monetised URL wins; otherwise fall back to
-  // the plain course URL. If neither exists the "Mulai Belajar" button is
-  // disabled so we don't promise an outbound journey we can't deliver.
+  // the plain course URL. If neither exists (or the URL is a fake/placeholder)
+  // the "Mulai Belajar" button is disabled so we don't promise an outbound
+  // journey we can't deliver.
   const fallbackUrl = (course.url ?? '').trim();
   const affiliateUrl = (course.affiliateUrl ?? '').trim();
-  const canStart = Boolean(affiliateUrl || fallbackUrl);
+  const target = affiliateUrl || fallbackUrl;
+  const hasUrl = Boolean(target);
+  const urlBad = isUrlUnavailable(target);
+  const canStart = hasUrl && !urlBad;
 
   return (
     <Card className="h-full hover:border-indigo-300 hover:shadow-md transition flex flex-col">
@@ -115,14 +119,16 @@ export function CourseCard({ course }: Props) {
           <SaveButton saved={saved} onClick={handleToggle} />
         </div>
 
-        {/* Primary CTA — P3-C: routes through /api/affiliate-click so each
-            tap is logged. We fall back to opening the plain course.url in a
-            new tab when JS isn't available (no-preflight fallback). */}
+        {/* Primary CTA — P3-C: opens the affiliate target in a NEW TAB and
+            logs the click via /api/affiliate-click (fire-and-forget). If the
+            course has no real link yet we disable the button and, when the URL
+            is a fake/placeholder, surface a "URL tidak tersedia" badge. */}
+        {hasUrl && urlBad && <UrlUnavailableBadge className="mt-1" />}
         <StartLearningButton
           courseId={course.id}
           courseTitle={course.titleId}
           platform={course.platform}
-          fallbackUrl={fallbackUrl || '#'}
+          url={target}
           canStart={canStart}
           onError={(msg) => showToast(msg, 'error')}
         />
@@ -137,103 +143,73 @@ function StartLearningButton({
   courseId,
   courseTitle,
   platform,
-  fallbackUrl,
+  url,
   canStart,
   onError,
 }: {
   courseId: string;
   courseTitle: string;
   platform: string;
-  fallbackUrl: string;
+  url: string;
   canStart: boolean;
   onError: (msg: string) => void;
 }) {
-  const [loading, setLoading] = useState(false);
-
-  const handleClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!canStart) {
       e.preventDefault();
       onError('Kursus ini belum punya tautan tujuan.');
       return;
     }
 
-    // Fire the analytics event for every valid start intent (including
-    // modifier / middle-clicks, which fall through to the browser below).
     track(AnalyticsEvent.CourseStartClicked, {
       course_id: courseId,
       platform,
     });
 
-    // Modifier-keys / middle-click → let the browser open in a new tab
-    // untouched. We only intercept the "primary click" path so power users
-    // can still middle-click to background the click while we log it.
+    // Modifier-keys / middle-click → let the browser open the anchor's href
+    // (`target="_blank"`) untouched. We only intercept the primary-click path
+    // so power users can still middle-click to background the tab.
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
       return;
     }
     e.preventDefault();
 
-    setLoading(true);
-    try {
-      const res = await fetch('/api/affiliate-click', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ courseId }),
-      });
-      const data = (await res.json()) as
-        | { ok: true; redirectUrl: string }
-        | { ok: false; message?: string };
+    // Open the course in a NEW TAB. Opening synchronously inside the click
+    // handler (rather than after an `await`) keeps us inside the user-gesture
+    // window, so popup blockers don't eat the new tab.
+    window.open(url, '_blank', 'noopener,noreferrer');
 
-      if (!res.ok || !data.ok) {
-        // Click logging failed — still send the user somewhere sensible.
-        window.location.replace(fallbackUrl);
-        return;
-      }
-      // `replace` keeps the back-button clean — the click-redirect hop
-      // doesn't appear in the history stack.
-      window.location.replace(data.redirectUrl);
-    } catch {
-      // Network down (offline, CORS, etc.) — fall back to the plain URL.
-      window.location.replace(fallbackUrl);
-    } finally {
-      // We don't flip `loading` back to false here because the page is
-      // about to navigate away. Resetting on the off chance the redirect
-      // takes a moment keeps the UI honest.
-      setTimeout(() => setLoading(false), 1500);
-    }
+    // Best-effort click log — fire and forget. We open a new tab (the current
+    // page stays put), so a normal fetch is fine; `keepalive` covers the case
+    // where the user immediately closes the tab.
+    void fetch('/api/affiliate-click', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ courseId }),
+      keepalive: true,
+    }).catch(() => {
+      /* analytics is best-effort — never block the user */
+    });
   };
 
   return (
     <a
-      href={fallbackUrl}
+      href={canStart ? url : '#'}
       onClick={handleClick}
-      rel="noopener noreferrer sponsored"
-      target="_blank"
+      aria-disabled={!canStart}
       aria-label={`Mulai belajar ${courseTitle}`}
       data-affiliate-cta="true"
       className={cn(
         'mt-1 inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-bold rounded-lg transition active:scale-[.98]',
         canStart
           ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-          : 'bg-slate-200 text-slate-500 cursor-not-allowed',
-        loading && 'opacity-70 pointer-events-none',
+          : 'bg-slate-200 text-slate-500 cursor-not-allowed opacity-50',
       )}
     >
-      {loading ? (
-        <>
-          <span
-            className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin"
-            aria-hidden
-          />
-          Membuka…
-        </>
-      ) : (
-        <>
-          Mulai Belajar
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M5 12h14M13 5l7 7-7 7" />
-          </svg>
-        </>
-      )}
+      Mulai Belajar
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M5 12h14M13 5l7 7-7 7" />
+      </svg>
     </a>
   );
 }

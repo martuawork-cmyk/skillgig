@@ -130,3 +130,22 @@ export function statusLabel(s: ApplicationStatus): string {
     case 'rejected': return 'Rejected';
   }
 }
+
+/**
+ * Detect gig / course URLs that are fake or not real yet. The catalog has a
+ * mix of real listings (Upwork, Remotive, Udemy, …) and seed rows whose
+ * `url` is a placeholder. We never edit those rows from the UI — instead we
+ * surface a "URL tidak tersedia" badge and disable the outbound CTA so we
+ * don't promise a journey we can't deliver.
+ *
+ * Flags: empty/whitespace, a bare anchor placeholder (`#`, `#…`), or any URL
+ * containing the markers `xxx` / `placeholder`. We deliberately do NOT treat
+ * a legitimate fragment (`https://host/page#section`) as unavailable.
+ */
+export function isUrlUnavailable(url?: string | null): boolean {
+  if (!url) return true;
+  const u = url.trim();
+  if (!u || u === '#' || u.startsWith('#')) return true;
+  const lower = u.toLowerCase();
+  return lower.includes('xxx') || lower.includes('placeholder');
+}

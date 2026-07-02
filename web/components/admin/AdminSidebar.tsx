@@ -1,11 +1,13 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
 import { BookOpen, Briefcase, LayoutDashboard, LogOut, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BrandMark } from '@/components/brand/Logo';
+import { ConfirmModal } from '@/components/admin/ConfirmModal';
 
 export type AdminUser = {
   name: string;
@@ -40,6 +42,15 @@ type Props = {
  */
 export function AdminSidebar({ user }: Props) {
   const pathname = usePathname() ?? '';
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  // Hidden form posted to /api/auth/signout — only submitted after the user
+  // confirms via the modal.
+  const logoutFormRef = useRef<HTMLFormElement>(null);
+
+  function handleConfirmLogout() {
+    setConfirmOpen(false);
+    logoutFormRef.current?.requestSubmit();
+  }
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col border-r border-slate-200 bg-white">
@@ -99,16 +110,33 @@ export function AdminSidebar({ user }: Props) {
             </p>
           </div>
         </div>
-        <form action="/api/auth/signout" method="post" className="mt-3">
-          <button
-            type="submit"
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
-          >
-            <LogOut className="h-4 w-4" aria-hidden />
+        <form ref={logoutFormRef} action="/api/auth/signout" method="post" className="hidden" aria-hidden>
+          {/* Submitted via requestSubmit() after the confirm modal. Kept as a
+              real form so the no-JS / signout endpoint stays a plain POST. */}
+          <button type="submit" tabIndex={-1} aria-hidden>
             Keluar
           </button>
         </form>
+        <button
+          type="button"
+          onClick={() => setConfirmOpen(true)}
+          className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
+        >
+          <LogOut className="h-4 w-4" aria-hidden />
+          Keluar
+        </button>
       </div>
+
+      <ConfirmModal
+        open={confirmOpen}
+        title="Keluar dari SkillGig?"
+        message="Kamu yakin ingin keluar dari akun ini?"
+        confirmLabel="Ya, Keluar"
+        cancelLabel="Batal"
+        tone="danger"
+        onConfirm={handleConfirmLogout}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </aside>
   );
 }

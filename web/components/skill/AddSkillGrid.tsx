@@ -1,12 +1,12 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { ButtonLink } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FilterPills } from '@/components/ui/FilterPills';
 import { CATEGORIES, type GigCategory } from '@/lib/types';
-import { categoryColor, categoryLabel } from '@/lib/utils';
+import { categoryColor, categoryLabel, cn } from '@/lib/utils';
 import { addUserSkill, removeUserSkill } from '@/lib/supabase/actions';
 import type { CatalogSkill } from '@/lib/supabase/queries';
 
@@ -36,14 +36,31 @@ export function AddSkillGrid({
   const owned = useMemo(() => new Set(ownedIds), [ownedIds]);
   const [bag, setBag] = useState<Set<string>>(owned);
   const [category, setCategory] = useState<GigCategory | 'all'>('all');
+  const [query, setQuery] = useState('');
+  const [debounced, setDebounced] = useState('');
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
+  // 300ms debounce on the search input so we don't re-filter on every keystroke.
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebounced(query.trim()), 300);
+    return () => window.clearTimeout(handle);
+  }, [query]);
+
   const visible = useMemo(() => {
-    if (category === 'all') return catalog;
-    return catalog.filter((s) => s.category === category);
-  }, [catalog, category]);
+    const needle = debounced.toLowerCase();
+    return catalog.filter((s) => {
+      const matchesCategory = category === 'all' || s.category === category;
+      const matchesQuery =
+        !needle ||
+        s.name.toLowerCase().includes(needle) ||
+        categoryLabel(s.category).toLowerCase().includes(needle);
+      return matchesCategory && matchesQuery;
+    });
+  }, [catalog, category, debounced]);
+
+  const searching = debounced.length > 0;
 
   function toggle(skillId: string) {
     if (!isAuthenticated) return; // CTA button handles redirect
@@ -81,6 +98,34 @@ export function AddSkillGrid({
 
   return (
     <>
+      {/* Search — client-side filter over the catalog (no refetch). */}
+      <div className="relative mb-4">
+        <svg
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Cari skill..."
+          aria-label="Cari skill"
+          className={cn(
+            'w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl',
+            'focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition',
+          )}
+        />
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <FilterPills<GigCategory | 'all'>
           items={[
@@ -108,14 +153,22 @@ export function AddSkillGrid({
       {visible.length === 0 ? (
         <EmptyState
           icon="🔍"
-          title="Tidak ada skill di kategori ini"
+          title={searching ? 'Skill tidak ditemukan' : 'Tidak ada skill di kategori ini'}
+          description={
+            searching
+              ? `Tidak ada skill yang cocok dengan "${debounced}". Coba kata kunci lain.`
+              : undefined
+          }
           action={
             <button
               type="button"
-              onClick={() => setCategory('all')}
+              onClick={() => {
+                setQuery('');
+                setCategory('all');
+              }}
               className="text-sm text-indigo-600 font-semibold hover:underline"
             >
-              Lihat semua skill →
+              {searching ? 'Reset pencarian' : 'Lihat semua skill'} →
             </button>
           }
         />

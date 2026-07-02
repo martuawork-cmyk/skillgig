@@ -13,9 +13,11 @@ import {
   categoryLabel,
   levelLabel,
   levelColor,
+  isUrlUnavailable,
   cn,
 } from '@/lib/utils';
 import { useSavedStore } from '@/lib/store/savedStore';
+import { UrlUnavailableBadge } from '@/components/ui/UrlUnavailableBadge';
 
 type Props = {
   gig: Gig;
@@ -27,6 +29,10 @@ export function EarnGigCard({ gig, onApply }: Props) {
   const toggleSaveGig = useSavedStore((s) => s.toggleSaveGig);
   const [applied, setApplied] = useState(false);
 
+  // Seed gigs sometimes carry a fake/placeholder URL — detect once so we can
+  // disable "Lamar" and explain why.
+  const urlBad = isUrlUnavailable(gig.url);
+
   const handleToggleSave = () => {
     toggleSaveGig({
       id: gig.id,
@@ -36,6 +42,7 @@ export function EarnGigCard({ gig, onApply }: Props) {
   };
 
   const handleApply = () => {
+    if (urlBad) return;
     if (onApply) onApply(gig.id);
     setApplied(true);
     setTimeout(() => setApplied(false), 2000);
@@ -53,6 +60,7 @@ export function EarnGigCard({ gig, onApply }: Props) {
             <Badge className={GIG_PLATFORMS[gig.platform]}>
               {gig.platform}
             </Badge>
+            {urlBad && <UrlUnavailableBadge />}
           </div>
           <button
             type="button"
@@ -117,12 +125,14 @@ export function EarnGigCard({ gig, onApply }: Props) {
           <button
             type="button"
             onClick={handleApply}
-            disabled={applied}
+            disabled={applied || urlBad}
+            aria-disabled={applied || urlBad}
             className={cn(
               'flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg transition active:scale-[.98]',
               applied
                 ? 'bg-emerald-100 text-emerald-700'
                 : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700 shadow-soft',
+              urlBad && 'opacity-50 cursor-not-allowed',
             )}
           >
             {applied ? (

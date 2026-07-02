@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Avatar } from '@/components/ui/Avatar';
+import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { signOut } from '@/lib/supabase/actions';
 import { cn } from '@/lib/utils';
 
@@ -16,6 +17,7 @@ type Props = {
 
 export function UserMenu({ userId, name, initials, role, email }: Props) {
   const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -122,7 +124,10 @@ export function UserMenu({ userId, name, initials, role, email }: Props) {
               <button
                 type="button"
                 role="menuitem"
-                onClick={onSignOut}
+                onClick={() => {
+                  setOpen(false);
+                  setConfirmOpen(true);
+                }}
                 className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 font-semibold"
               >
                 Sign out
@@ -131,6 +136,20 @@ export function UserMenu({ userId, name, initials, role, email }: Props) {
           </ul>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmOpen}
+        title="Keluar dari SkillGig?"
+        message="Kamu yakin ingin keluar dari akun ini?"
+        confirmLabel="Ya, Keluar"
+        cancelLabel="Batal"
+        tone="danger"
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void onSignOut();
+        }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
