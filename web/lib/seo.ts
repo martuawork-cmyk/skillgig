@@ -224,3 +224,35 @@ export function jobPostingJsonLd(gig: Gig): Record<string, unknown> {
 
   return ld;
 }
+
+/** schema.org BreadcrumbList JSON-LD from a list of {name, path} crumbs. */
+export function breadcrumbJsonLd(
+  items: { name: string; path: string }[],
+): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((it, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: it.name,
+      item: `${SITE_URL}${it.path}`,
+    })),
+  };
+}
+
+/** schema.org ItemList JSON-LD linking each job on a category listing page. */
+export function jobItemListJsonLd(
+  jobs: { id: string; title: string }[],
+): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    itemListElement: jobs.map((j, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      url: `${SITE_URL}/jobs/${j.id}`,
+      name: j.title,
+    })),
+  };
+}
