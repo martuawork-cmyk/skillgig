@@ -25,6 +25,7 @@ const STATIC_ROUTES: MetadataRoute.Sitemap = [
   { url: abs('/gigs'), changeFrequency: 'weekly', priority: 0.9, lastModified: new Date() },
   { url: abs('/jobs'), changeFrequency: 'weekly', priority: 0.9, lastModified: new Date() },
   { url: abs('/tools/cv-review'), changeFrequency: 'monthly', priority: 0.8, lastModified: new Date() },
+  { url: abs('/pricing'), changeFrequency: 'monthly', priority: 0.7, lastModified: new Date() },
   { url: abs('/roadmap'), changeFrequency: 'weekly', priority: 0.8, lastModified: new Date() },
   { url: abs('/skills'), changeFrequency: 'weekly', priority: 0.8, lastModified: new Date() },
   { url: abs('/earn'), changeFrequency: 'monthly', priority: 0.7, lastModified: new Date() },

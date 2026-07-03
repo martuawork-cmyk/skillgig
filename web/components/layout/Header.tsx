@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 const NAV = [
   { label: 'Lowongan',      href: '/jobs'            },
   { label: 'Review CV',     href: '/tools/cv-review' },
+  { label: 'Harga',         href: '/pricing'         },
   { label: 'Roadmap',       href: '/roadmap'         },
   { label: 'Tentang',       href: '/about'           },
 ];
