@@ -100,6 +100,10 @@ export function getSiteMetadata(): Metadata {
     publisher: SITE_NAME,
     alternates: {
       canonical: SITE_URL,
+      // RSS auto-discovery: feed readers + automation tools find the job feed.
+      types: {
+        'application/rss+xml': `${SITE_URL}/rss.xml`,
+      },
     },
     openGraph: {
       type: 'website',
