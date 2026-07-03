@@ -13,7 +13,9 @@ import 'server-only';
 // so the API route can respond 503 instead of throwing.
 // =============================================================================
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
+// Model is env-overridable so a Google model sunset never needs a code change.
+// NOTE: gemini-2.0-flash was discontinued 2026-06-01 — default to a current one.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const FETCH_TIMEOUT_MS = 30_000;
 /** Cap input so a pasted book can't run up the bill / blow the context. */
@@ -138,8 +140,13 @@ export async function reviewCV(input: CvReviewInput): Promise<CvReviewResult> {
         contents: [{ parts: [{ text: buildPrompt(input) }] }],
         generationConfig: {
           temperature: 0.4,
-          maxOutputTokens: 2048,
+          // Room for the full JSON (feedback + rewritten summary + cover letter)
+          // so it never truncates into invalid JSON.
+          maxOutputTokens: 8192,
           responseMimeType: 'application/json',
+          // Disable 2.5-flash "thinking" — we want tokens spent on the answer,
+          // not hidden reasoning (faster + cheaper + avoids truncation).
+          thinkingConfig: { thinkingBudget: 0 },
         },
       }),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),

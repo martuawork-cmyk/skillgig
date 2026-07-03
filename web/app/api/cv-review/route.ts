@@ -80,7 +80,12 @@ export async function POST(req: Request): Promise<Response> {
           // eslint-disable-next-line no-console
           console.error('[cv-review] failed:', err.detail);
           return NextResponse.json(
-            { ok: false, error: 'Gagal memproses review. Coba lagi sebentar.' },
+            {
+              ok: false,
+              error: 'Gagal memproses review. Coba lagi sebentar.',
+              // Short upstream reason to aid debugging (e.g. a model name issue).
+              detail: err.detail.message,
+            },
             { status: 503 },
           );
       }
